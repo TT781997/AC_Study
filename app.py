@@ -1,27 +1,9 @@
-"""
-app.py — Plataforma Análise de Custos ISEL (Consenso Multi-Agente)
-====================================================================
-EdTech app em Streamlit com:
-  • Identidade visual inspirada no ISEL (azul institucional, cards, ícones)
-  • Sidebar com:
-        ⚙️ Configurações: NVIDIA API Key + MAX_ITERATIONS + modelos dos 3 agentes
-        📁 Upload de resumos (.txt / .md)
-        📚 Lista de documentos carregados (multiselect: abre tab por documento)
-        🤖 Atalhos para Tabs de IA (Resumo / Avaliação)
-  • Cada documento abre como UMA tab única; dentro da tab, selector de capítulo.
-  • Duas Tabs fixas de IA:
-        🧠 Resumo Inteligente
-        🎓 Avaliação Interativa
-    Ambas pedem ao utilizador QUE MATÉRIA (que documentos) incluir na análise.
-  • Loop de Consenso Dinâmico entre 3 agentes NVIDIA NIM com REGRA DE OURO:
-    nenhum agente avalia ou reescreve o seu próprio output.
-
-Execução:
-    streamlit run app.py
-
-Dependências:
-    pip install streamlit openai
-"""
+# --------------------------------------------------------------
+# app.py – Plataforma Análise de Custos ISEL (Consenso Multi‑Agente)
+# --------------------------------------------------------------
+# Autor: Engenheiro de Software Sénior & Arquiteto de IA
+# Descrição: Aplicação completa, modular, pronta‑para‑rodar.
+# --------------------------------------------------------------
 
 from __future__ import annotations
 
@@ -32,7 +14,6 @@ from typing import Dict, List, Optional, Tuple
 import streamlit as st
 from openai import OpenAI, OpenAIError
 
-
 # =============================================================================
 # 1. CONFIGURAÇÃO DA PÁGINA
 # =============================================================================
@@ -42,7 +23,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
 
 # =============================================================================
 # 2. IDENTIDADE VISUAL ISEL (CSS injetado)
@@ -162,7 +142,6 @@ h1 {{ letter-spacing: -0.02em; }}
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-
 # =============================================================================
 # 3. CONSTANTES — PARSER E AGENTES
 # =============================================================================
@@ -200,7 +179,7 @@ def get_model(name: str) -> str:
 
 
 # =============================================================================
-# 4. PARSER DOS RESUMOS
+# 4. PARSER DOS RESUMOS (arquivos .txt / .md)
 # =============================================================================
 def parse_sections(chapter_body: str) -> Dict[str, str]:
     """Extrai as 5 secções padrão de um capítulo."""
@@ -229,6 +208,15 @@ def parse_chapters(doc_body: str) -> Dict[str, Dict[str, str]]:
 
 
 def parse_content(text: str, fallback_name: str = "Documento") -> Dict[str, Dict[str, Dict[str, str]]]:
+    """
+    Espera que o ficheiro contenha blocos do tipo:
+        ### 📄 Documento: Nome do Documento
+        #### Capítulo 1: Título do Capítulo
+        * **🎯 Foco Principal:** …
+        * **🧠 Conceitos-Chave:** …
+        …
+    Retorna um dicionário: {doc_name: {chapter_title: {section_key: text}}}.
+    """
     out: Dict[str, Dict[str, Dict[str, str]]] = {}
     matches = list(re.finditer(r"###\s*(?:📄\s*)?Documento:\s*([^\n]+)", text))
     if not matches:
@@ -251,7 +239,6 @@ def build_full_material(
 ) -> str:
     """
     Compila a matéria carregada num único texto enviado aos agentes.
-
     Se `selected_docs` for fornecido, apenas esses documentos são incluídos —
     é o filtro do selector de matéria nas tabs de IA.
     """
