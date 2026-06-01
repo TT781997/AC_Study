@@ -1706,3 +1706,488 @@ $$\text{Vendas} - \text{CIPV} = \text{Margem Bruta Industrial}$$
   $$\text{Margem de Lucro Operacional Real (\%)} = \left( \frac{\text{Faturação Total} - \text{Custo Complexivo Total}}{\text{Faturação Total}} \right) \times 100$$
 * **🏭 Aplicação Prática:** A comissão de gestão do escritório de advocacia analisa com rigor o relatório do caso Santos Falcão e valida que a margem de lucro de 16,7% cumpre os objetivos estratégicos mínimos, decidindo aceitar futuros contratos equivalentes e otimizar a alocação de pessoal técnico nas próximas assessorias (maximizando o uso de juniores e poupando horas de sócios).
 * **🎓 Dica do Catedrático:** Este constitui o exemplo prático quantitativo mais completo e paradigmático de aplicação de métodos diretos no setor terciário; certifique-se de que sabe reconstruir a tabela de categorias e executar com perfeição todos os passos de cálculo de faturação, custos e margens – um tema com presença garantida e recorrente em exercícios de exames.
+
+#### Capítulo 15: Método Indireto, Apuramento do Custo por Fases ou por Processos
+* **🎯 Foco Principal:** Apresentar o método indireto (por processos/fases), adequado à produção contínua e homogénea, com foco no cálculo do custo médio/unitário por fase.
+* **🧠 Conceitos-Chave:**
+  * Acumulação mensal dos custos totais por fase.
+  * Aplicação em indústrias de fluxo contínuo (papel, laticínios, refino de petróleo, serviços postais).
+  * Determinação do custo médio por unidade produzida.
+  * Contraste com o método direto: acumulação por departamentos/fases em vez de por ordem individual.
+* **🏭 Aplicação:** Uma fábrica de iogurtes acumula custos por fases (pasteurização, fermentação, embalagem) e calcula o custo unitário médio mensal.
+* **🎓 Dica do Catedrático:** Método indireto = “por processos” (contínua); memorize a diferença fundamental em relação ao direto (por ordens/encomenda) – base de qualquer questão comparativa.
+
+#### Capítulo 16: Características do Método Indireto
+* **🎯 Foco Principal:** Detalhar as características do método indireto (acumulação mensal, continuidade produtiva, cálculo por fases) e enumerar vantagens e limitações face ao método direto.
+* **🧠 Conceitos-Chave:**
+  * Acumulação por centros de custos/fases e uso de “unidades equivalentes”.
+  * Vantagens: simplificação administrativa, eficiência em produção homogénea, boa visibilidade por fase.
+  * Limitações: menor precisão em produtos diversificados, diluição de ineficiências, complexity na valorização de PVF.
+* **🏭 Aplicação:** Indústria química ou alimentar usa o método indireto para determinar custo médio mensal e transferir custos entre fases do processo.
+* **🎓 Dica do Catedrático:** A tabela de vantagens/limitações é essencial; saiba contrastá-la com o método direto – tema recorrente em questões de escolha de método.
+
+#### Capítulo 17: Demonstração do Custo por Fases
+* **🎯 Foco Principal:** Explicar a estrutura da Demonstração do Custo por Fases (inputs → processamento → outputs) e as fórmulas do custo unitário e custo unitário acumulado.
+* **🧠 Conceitos-Chave:**
+  * Inputs: existências iniciais + custos do período.
+  * Outputs: produção concluída transferida + existências finais em vias de fabrico.
+  * Fórmulas: Custo unitário da fase = Custos totais da fase / Unidades produzidas na fase.
+* **🧮 Fórmulas e Metodologias:** $$Custo\ Unit\acute{a}rio\ da\ Fase = \frac{Custos\ Totais\ da\ Fase}{Unidades\ Produzidas\ na\ Fase}$$
+* **🏭 Aplicação:** Uma unidade de produção de papel calcula o custo unitário em cada fase (preparação da pasta, formação da folha, secagem) e valoriza corretamente os semiacabados.
+* **🎓 Dica do Catedrático:** Domine as fórmulas e o conceito de “unidades produzidas na fase” (excluindo transferência da fase anterior) – núcleo técnico do método indireto.
+
+#### Capítulo 18: Método das Unidades Equivalentes
+* **🎯 Foco Principal:** Apresentar o método das unidades equivalentes como ferramenta essencial para valorizar a produção em vias de fabrico (PVF) no método indireto.
+* **🧠 Conceitos-Chave:**
+  * Conversão de unidades físicas incompletas em unidades equivalentes de produto acabado (por elemento de custo: MP, MOD, GGF).
+  * Aplicável apenas ao método indireto (por fases).
+  * Exemplo prático: 100 unidades a $70\%$ de MP = 70 unidades equivalentes.
+* **🏭 Aplicação:** Uma linha de montagem com 10 equipamentos em curso ($60\%$ MP, $50\%$ MOD) converte-os em unidades equivalentes para correta valorização dos inventários.
+* **🎓 Dica do Catedrático:** Este é o conceito mais técnico do método indireto; memorize as 4 etapas (identificação, conversão, avaliação, valorização) e o exemplo numérico – exercício garantido em exame.
+
+#### Capítulo 19: Metodologia para a Aplicação do Método das Unidades Equivalentes
+* **🎯 Foco Principal:** Descrever as cinco etapas sequenciais e estruturadas para aplicar corretamente o método das unidades equivalentes em cada fase do processo produtivo (método indireto).
+* **🧠 Conceitos-Chave:**
+  * Configuração contabilística da fase (centros de custo e critérios de imputação).
+  * Cálculo das unidades equivalentes (por elemento: MP, MOD, GGF) considerando o grau de acabamento.
+  * Cálculo do custo unitário por elemento.
+  * Valorização das existências finais in vias de fabrico.
+  * Valorização da produção acabada transferida para a fase seguinte ou armazém.
+* **🏭 Aplicação:** Uma fábrica de equipamentos aplica as 5 etapas para valorizar corretamente os produtos em curso (ex.: equipamentos de rega a $60\%$ de MP) e a produção transferida para armazém.
+* **🎓 Dica do Catedrático:** As cinco etapas são o procedimento operacional padrão do método indireto; memorize a ordem exata – é base de qualquer exercício prático de unidades equivalentes.
+
+#### Capítulo 20: Caso sobre a Aplicação do Método das Unidades Equivalentes
+* **🎯 Foco Principal:** Resolver um caso prático completo (“Ibérica Agrícola, S.A.” – linha de montagem de equipamentos de rega) aplicando o método das unidades equivalentes, com situação inicial, movimentação do mês e comparação entre FIFO e Custo Médio.
+* **🧠 Conceitos-Chave:**
+  * Existências iniciais (5 unidades incompletas com $\%$ por incorporar).
+  * Movimentação: 120 unidades transferidas + 10 unidades finais em curso.
+  * Cálculo detalhado de unidades equivalentes por elemento (MP, MOD, GGF).
+  * Aplicação dos critérios FIFO (primeiras a entrar = primeiras a sair) e Custo Médio.
+* **🧮 Fórmulas e Metodologias:**
+  * Unidades equivalentes MP: $(5 \times 20\%) + 115 + (10 \times 60\%) = 122$
+  * Unidades equivalentes MOD: $(5 \times 60\%) + 115 + (10 \times 50\%) = 123$
+* **🏭 Aplicação:** A empresa determina o valor exato da produção acabada transferida para armazém e das existências finais em vias de fabrico.
+* **🎓 Dica do Catedrático:** Este é o exercício prático mais completo do documento; pratique o cálculo de unidades equivalentes por FIFO – sai frequentemente em exame.
+
+#### Capítulo 21: Perdas durante o Processo Produtivo
+* **🎯 Foco Principal:** Distinguir perdas normais (inerentes ao processo) de perdas anormais (excedentes) e apresentar os três métodos de quantificação das perdas no método indireto.
+* **🧠 Conceitos-Chave:**
+  * Perdas normais: incorporadas no custo dos produtos conformes (elevam o custo unitário).
+  * Perdas anormais: contabilizadas como custo do período (não imputadas aos produtos).
+  * Três métodos: perda no início, no fim ou durante o processo.
+* **🏭 Aplicação:** Numa refinaria, perdas normais por evaporação são absorvidas no custo do gasóleo; perdas anormais por falha de equipamento são expurgadas.
+* **🎓 Dica do Catedrático:** Perdas normais = custo dos bons; perdas anormais = custo do período. Domine os três métodos de quantificação – tema clássico de comparação.
+
+#### Capítulo 22: Métodos para Quantificar as Perdas
+* **🎯 Foco Principal:** Detalhar os três métodos práticos de quantificação das perdas (1.º, 2.º e 3.º método) com exemplos numéricos e implicações no custo unitário.
+* **🧠 Conceitos-Chave:**
+  * 1.º Método: perdas absorvidas integralmente pelas unidades boas (custo unitário varia com a perda real).
+  * 2.º Método: atribui custo específico às unidades perdidas (debita à conta de produção).
+  * 3.º Método: híbrido – perdas normais absorvidas; perdas anormais como custo adicional.
+* **🧮 Fórmulas e Metodologias:** Exemplo com $500$ litros input, $460$ output, $40$ perdas $\rightarrow$ cálculos de custo por litro em cada método.
+* **🏭 Aplicação:** Uma destilaria escolhe o 3.º método para distinguir perdas normais (evaporação) de anormais (falha técnica).
+* **🎓 Dica do Catedrático:** Saiba calcular e comparar os três métodos numericamente – é exercício garantido quando o tema é perdas no processo.
+
+#### Capítulo 23: Comparação entre os Métodos Direto e Indireto
+* **🎯 Foco Principal:** Apresentar uma tabela comparativa completa entre método direto e indireto (regimes de fabrico, setores, forma de apuramento, período, valorização de PVF).
+* **🧠 Conceitos-Chave:**
+  * Direto: descontínua, por encomenda, rastreabilidade individual.
+  * Indireto: contínua, por fases, custo médio/unitário.
+  * Sistemas híbridos são possíveis e frequentes.
+* **🏭 Aplicação:** Empresa têxtil verticalmente integrada usa indireto nas fases iniciais e direto nas encomendas finais.
+* **🎓 Dica do Catedrático:** A tabela de comparação é o resumo final dos dois métodos; memorize os critérios principais – surge sempre em questões teóricas ou de escolha.
+
+#### Capítulo 24: Evolução do Método de Apuramento do Custo por Processos
+* **🎯 Foco Principal:** Traçar a evolução histórica e tecnológica do método indireto (por processos), desde a Revolução Industrial até à Indústria 4.0, integração com ABC e sustentabilidade.
+* **🧠 Conceitos-Chave:**
+  * Origem na produção em massa.
+  * Adaptação digital (IoT, automação, cloud).
+  * Híbridos com ABC, métricas ambientais e extensão à cadeia de valor.
+* **🏭 Aplicação:** Uma fábrica química moderna usa método por processos + ABC + métricas de resíduos para cumprir requisitos ESG.
+* **🎓 Dica do Catedrático:** Este capítulo mostra a atualidade do método indireto; saiba ligar a evolução tecnológica à sua permanência como ferramenta essencial.
+
+#### Capítulo 25: Método de Apuramento do Custo por Processos Baseado em Atividades
+* **🎯 Foco Principal:** Apresentar a evolução do método indireto tradicional para uma abordagem híbrida que incorpora princípios do Custeio Baseado em Atividades (ABC), quando empresas com processos contínuos fabricam produtos diversificados com variações significativas de consumo de recursos.
+* **🧠 Conceitos-Chave:**
+  * Identificação precisa das atividades em cada fase do processo.
+  * Determinação de indutores de custo (*cost drivers*) relevantes para cada atividade.
+  * Monitorização do tempo e recursos consumidos por produto.
+  * Desenvolvimento de taxas de alocação baseadas nos indutores.
+  * Distribuição criteriosa dos custos segundo o consumo efetivo de atividades.
+* **🏭 Aplicação:** A “Alfa, SA” (produtos químicos) identifica que um produto de especialidade ($5\%$ do volume) consome $25\%$ dos recursos na fase de reação; a “Beta Metalúrgica” usa o híbrido para comparar consumo em fundição e acabamento entre diferentes ligas metálicas.
+* **🎓 Dica do Catedrático:** Este método resolve a limitação do indireto tradicional em ambientes com variedade; memorize as 5 etapas – é a ponte entre o método por processos clássico e o ABC estudado no documento anterior.
+
+#### Capítulo 26: A Produção Conjunta
+* **🎯 Foco Principal:** Definir e distinguir produção disjunta de produção conjunta, apresentando os desafios únicos de repartição de custos conjuntos e exemplos industriais clássicos.
+* **🧠 Conceitos-Chave:**
+  * Produção disjunta: processos independentes para cada produto (ex.: mobiliário por medida, têxtil).
+  * Produção conjunta: produtos interdependentes a partir do mesmo insumo e processo (impossível produzir um sem os outros).
+  * Ponto de separação: momento em que os produtos se autonomizam.
+  * Custos conjuntos (até ao ponto de separação) vs. custos específicos (após separação).
+  * Exemplos: refinação de petróleo, processamento de leite, abate de gado, indústria química.
+* **🏭 Aplicação:** Uma refinaria não consegue produzir gasolina sem gerar gasóleo e querosene; todos os custos até à destilação são conjuntos e devem ser repartidos.
+* **🎓 Dica do Catedrático:** A produção conjunta é o terceiro grande método de apuramento; saiba a diferença fundamental em relação à disjunta e o conceito de “ponto de separação” – núcleo de todo o capítulo seguinte.
+
+#### Capítulo 27: Processo Produtivo em Produção Conjunta
+* **🎯 Foco Principal:** Descrever o fluxo típico de uma produção conjunta (fase conjunta $\rightarrow$ ponto de separação $\rightarrow$ fase disjunta) e destacar o grande desafio contabilístico pós-separação.
+* **🧠 Conceitos-Chave:**
+  * Fase conjunta inicial: custos comuns a todos os produtos.
+  * Ponto de separação: produtos tornam-se identificáveis e seguem caminhos distintos.
+  * Fase disjunta: custos específicos diretamente imputáveis a cada produto.
+  * Exemplos ilustrados: moagem de trigo, processamento de azeitona, lacticínios, abate de gado.
+* **🏭 Aplicação:** Num abate de gado, os custos até à separação dos cortes são conjuntos; após o ponto de separação, o custo de embalagem de cada corte é específico.
+* **🎓 Dica do Catedrático:** O diagrama do fluxo (Matéria-prima $\rightarrow$ Secção I $\rightarrow$ Ponto de separação $\rightarrow$ Secções II/III) é fundamental; saiba explicar o que são custos conjuntos vs. custos específicos.
+
+#### Capítulo 28: Métodos de Repartição de Custos Conjuntos (próximos capítulos do documento)
+* **🎯 Foco Principal:** Apresentar os principais métodos de repartição dos custos conjuntos (até ao ponto de separação) entre os produtos principais/coprodutos.
+* **🧠 Conceitos-Chave:**
+  * Métodos físicos (quantidade, peso, volume).
+  * Métodos de valor de venda (preço de venda no ponto de separação ou valor líquido realizável).
+  * Critérios de escolha: lógica, consistência e relevância económica.
+  * Distinção entre produtos principais, subprodutos e resíduos.
+* **🏭 Aplicação:** Numa refinaria, os custos conjuntos da destilação são repartidos pela gasolina, gasóleo e querosene segundo valor de venda ou proporção física.
+* **🎓 Dica do Catedrático:** A repartição de custos conjuntos é o coração técnico da produção conjunta; memorize os métodos principais e as vantagens/limitações de cada um – tema de exercício prático garantido.
+
+***
+
+### 📄 Documento: Contabilidade de Gestão no SNC-AP — Manual para Alunos de Mestrado.pdf
+
+#### Capítulo 1: Introdução e Enquadramento + Os Três Subsistemas de Contabilidade
+* **🎯 Foco Principal:** Situar a contabilidade de gestão no contexto da Nova Gestão Pública (NPM) e do SNC-AP (Decreto-Lei n.º 192/2015), demonstrando a obrigatoriedade do subsistema de gestão (NCP 27) e a sua articulação com os subsistemas orçamental e financeiro, de forma a fornecer informação económica e estratégica para a eficiência, eficácia e economia na Administração Pública.
+* **🧠 Conceitos-Chave:**
+  * SNC-AP: Sistema de Normalização Contabilística para as Administrações Públicas (27 NCP, convergentes com IPSAS).
+  * NCP 27: Norma específica de contabilidade de gestão, obrigatória desde 2018/2020.
+  * Três subsistemas: Orçamental (ótica de caixa, classificação económica), Financeira (por natureza, certificada) e de Gestão (por destino/atividades/funções, presente e futuro).
+  * *Value for money* e indicadores de desempenho como *drivers* da reforma.
+* **🏭 Aplicação no Mundo Real:** Uma autarquia local utiliza a contabilidade de gestão para calcular o custo real por serviço prestado (ex.: recolha de resíduos) e decidir se é mais económico produzir internamente ou subcontratar.
+* **🎓 Dica do Catedrático:** Memorize a tabela comparativa dos três subsistemas – é o quadro de base de todo o manual e aparece sempre em questões introdutórias de exame.
+
+#### Capítulo 2: Conceitos Fundamentais (Três óticas contabilísticas + Definição de custo)
+* **🎯 Foco Principal:** Distinguir as três óticas contabilísticas (orçamental, financeira e de tesouraria) e definir o conceito de custo como base da contabilidade de gestão, com a contabilidade financeira (Classes 6 e 7) como fonte de informação.
+* **🧠 Conceitos-Chave:**
+  * Despesa: obrigação de pagar (ótica orçamental).
+  * Gasto/Custo: consumo de recursos para um propósito específico (ótica económica).
+  * Pagamento: saída efectiva de meios monetários (ótica de tesouraria).
+  * Custo: valor monetário dos recursos consumidos por um objecto de custo (actividade, serviço, bem, etc.), resultante de gastos repartidos por critérios de imputação.
+* **🏭 Aplicação no Mundo Real:** Um hospital público reclassifica a despesa orçamental de um medicamento (despesa) em gasto/custo do serviço de cirurgia (objecto de custo) para calcular o custo real por intervenção.
+* **🎓 Dica do Catedrático:** A distinção despesa/gasto/custo é fundamental e frequentemente testada; saiba explicar que a NCP 27 trabalha com a ótica económica.
+
+#### Capítulo 3: Reclassificação dos Gastos
+* **🎯 Foco Principal:** Apresentar as classificações essenciais dos gastos para efeitos de contabilidade de gestão (directo/indirecto, incorporável/não incorporável, fixo/variável, ambientais e outros relevantes).
+* **🧠 Conceitos-Chave:**
+  * Gasto directo: relação causa-efeito clara com um único objecto de custo.
+  * Gasto indirecto: requer rateio (ex.: depreciações, manutenção).
+  * Incorporável: imputado às actividades/bens/serviços; não incorporável: levado directamente a resultados (ex.: imparidades).
+  * Fixo vs. variável; gastos ambientais (divulgação separada, Agenda 2030); subactividade e gastos administrativos.
+* **🏭 Aplicação no Mundo Real:** Uma escola pública classifica o salário do professor como directo ao curso (objecto de custo) e a electricidade da escola como indirecta, rateada por área ou horas de utilização.
+* **🎓 Dica do Catedrático:** A nota prática (“um gasto pode ser directo ao departamento mas indirecto ao serviço final”) é crucial – evite erros de classificação em exercícios.
+
+#### Capítulo 4: Reclassificação dos Rendimentos + Systems de Custeio
+* **🎯 Foco Principal:** Classificar os rendimentos (directos, gerais, ambientais) e apresentar os cinco sistemas de custeio previstos na NCP 27, recomendando o custeio total.
+* **🧠 Conceitos-Chave:**
+  * Rendimentos directos: associados a um produto/serviço específico.
+  * Rendimentos gerais: não imputáveis (ex.: IMI).
+  * Sistemas: Total (recomendado), Directo, Variável, Racional, Padrão.
+* **🏭 Aplicação no Mundo Real:** Uma autarquia adopta o custeio total + ABC para calcular o custo real de um serviço de transporte escolar e justificar a taxa cobrada ao utente.
+* **🎓 Dica do Catedrático:** O custeio total é o recomendado pela NCP 27 – saiba a tabela de comparação e as diferenças face ao custeio variável/directo.
+
+#### Capítulo 5: Centros de Custo, Objectos de Custo e Critérios de Imputação dos Gastos Indirectos
+* **🎯 Foco Principal:** Definir centros e objectos de custo e explicar o processo de imputação dos gastos indirectos (repartição primária e secundária) com recurso a bases múltiplas.
+* **🧠 Conceitos-Chave:**
+  * Centro de custo: grupo homogéneo de custos (ex.: unidade orgânica).
+  * Objecto de custo: produto, serviço, actividade ou projecto.
+  * Afecção directa vs. imputação (*cost drivers*).
+  * Repartição primária (aos departamentos) e secundária (aos objectos finais).
+* **🏭 Aplicação no Mundo Real:** Um hospital define o bloco operatório como centro de custo e a cirurgia como objecto de custo, imputando os gastos indirectos (anestesia, limpeza) por número de intervenções.
+* **🎓 Dica do Catedrático:** Bases de imputação múltiplas são recomendadas (não base única) – memorize os exemplos da tabela (horas de trabalho, área ocupada, nº de utilizadores).
+
+#### Capítulo 6: Sistema ABC – Activity-Based Costing
+* **🎯 Foco Principal:** Apresentar o ABC como sistema recomendado pela NCP 27 para entidades públicas, com as suas etapas de implementação, fases de imputação e vantagens.
+* **🧠 Conceitos-Chave:**
+  * Princípio: as actividades consomem recursos; os produtos consomem actividades.
+  * 5 etapas de implementação + 4 fases de imputação ($\S28$).
+  * Vantagens: eliminação de desperdícios, minimização de distorções, orientação para o cidadão, benchmarking.
+* **🏭 Aplicação no Mundo Real:** Um município usa ABC para calcular o custo real de licenças de construção, identificando actividades de suporte que não acrescentam valor.
+* **🎓 Dica do Catedrático:** O ABC é o sistema privilegiado na NCP 27; domine as etapas e as fases de imputação – tema avançado e frequente em exames de mestrado.
+
+#### Capítulo 7: Aplicação do ABC por Subsetor + Características Qualitativas da Informação
+* **🎯 Foco Principal:** Detalhar a aplicação sectorial do ABC (educação, saúde, autarquias) e os quatro atributos qualitativos que a informação de gestão deve respeitar.
+* **🧠 Conceitos-Chave:**
+  * Educação: mapas por curso, projecto, serviço à comunidade.
+  * Saúde: por unidade, dia de internamento, consulta, doente.
+  * Autarquias: por bem/serviço, função, departamento.
+  * Atributos: fiabilidade, oportunidade, comparabilidade, custo/benefício.
+* **🏭 Aplicação no Mundo Real:** Uma universidade pública calcula o custo por estudante/curso e por projecto de investigação para justificar candidaturas a financiamento.
+* **🎓 Dica do Catedrático:** Os requisitos por subsetor ($\S35$-37) são obrigatórios em exame; memorize também os quatro atributos qualitativos ($\S9$).
+
+#### Capítulo 8: Classe 9 – Plano de Contas da Contabilidade de Gestão + Fluxo Contabilístico + Mapas de Reporting
+* **🎯 Foco Principal:** Apresentar a Classe 9 (registo digráfico articulado com Classes 6/7), o fluxo contabilístico simplificado e os seis mapas obrigatórios de reporting.
+* **🧠 Conceitos-Chave:**
+  * Contas 91 a 98 (reclassificação, orgânica, actividades, produtos, serviços, resultados).
+  * Fluxo: reclassificação $\rightarrow$ distribuição orgânica $\rightarrow$ actividades $\rightarrow$ produtos/serviços $\rightarrow$ apuramento de resultados.
+  * Seis mapas (resultados por funções, por produtos/serviços, custos por actividades, etc.).
+* **🏭 Aplicação no Mundo Real:** Uma autarquia elabora o Mapa 2 (resultados por serviços) para demonstrar o custo real do serviço de recolha de resíduos e justificar a taxa cobrada.
+* **🎓 Dica do Catedrático:** A Classe 9 e os seis mapas são o fecho técnico do manual – saiba enumerá-los e explicar o fluxo simplificado.
+
+#### Capítulo 9: Divulgações Obrigatórias + Exemplo Prático Resumido — Sistema ABC + Síntese dos Pontos-Chave
+* **🎯 Foco Principal:** Expor as divulgações obrigatórias no Relatório de Gestão e no relato periódico, ilustrar com um exemplo prático de ABC e sintetizar os pontos essenciais para o aluno.
+* **🧠 Conceitos-Chave:**
+  * Divulgação por bem/serviço/actividade: custos directos/indirectos, rendimentos, custos totais, critérios de imputação.
+  * Exemplo municipal (3 projectos, 5 actividades) com cálculo de custo unitário e margem por projecto.
+  * Síntese: NCP 27, custeio total + ABC, reclassificações, Classe 9, mapas.
+* **🏭 Aplicação no Mundo Real:** O departamento de urbanismo de um município calcula o resultado por projecto e trata as propostas não aceites como gastos não incorporados.
+* **🎓 Dica do Catedrático:** O exemplo prático do Passo 3 é excelente para treino; a tabela de síntese dos pontos-chave é o resumo perfeito para revisão antes do exame.
+
+***
+
+### 📄 Documento: guia_estudo.pdf
+
+#### Capítulo 1: Enquadramento geral + Regimes de fabrico e adequação do método
+* **🎯 Foco Principal:** Fornecer o enquadramento conceptual dos métodos de apuramento de custos, enfatizando que a escolha do método deve ser feita em função da natureza do processo produtivo (descontínua vs. contínua) e do tipo de objecto de custo, para garantir informação relevante à gestão.
+* **🧠 Conceitos-Chave:**
+  * Produção descontínua: encomendas, projectos ou lotes diferenciados (favorece método directo).
+  * Produção contínua: fluxos estáveis de bens homogéneos (favorece método indirecto ou por processos).
+  * Critério de escolha: possibilidade de rastrear custos directamente ao objecto de custo e grau de homogeneidade da produção.
+* **🏭 Aplicação:** Uma fábrica de mobiliário por medida (descontínua) adopta o método directo; uma unidade de produção de iogurtes (contínua) adopta o método indirecto.
+* **🎓 Dica do Catedrático:** Este é o capítulo de introdução; memorize a ligação directa entre regime de fabrico e método de custeio – é o ponto de partida de qualquer questão teórica.
+
+#### Capítulo 2: Método Directo (Características principais + Aplicação em empresas de serviços)
+* **🎯 Foco Principal:** Descrever o método directo (custeio por ordens/encomendas/projectos) e a sua adaptação a contextos de produção personalizada e a empresas de serviços.
+* **🧠 Conceitos-Chave:**
+  * Objectivo: acumular custos por objecto de custo individual (obra, navio, móvel por medida, projecto de consultoria, cliente).
+  * Forte rastreabilidade dos custos directos (matérias e MOD directamente afectas).
+  * Imputação dos custos indirectos através de bases e coeficientes de repartição.
+  * Aplicação em serviços: utilização de *timesheets* para imputar horas e custos operacionais a projectos ou clientes específicos.
+* **🏭 Aplicação:** Um escritório de advocacia acumula custos por cliente através de folhas de horas (*timesheets*) e rateia custos operacionais via coeficiente de imputação.
+* **🎓 Dica do Catedrático:** O método directo é o método da “ficha de custos” ou “ordem de produção”; domine a sua aplicação em serviços – tema cada vez mais frequente em exames.
+
+#### Capítulo 3: Método Indirecto (Características principais + Unidades equivalentes + Critérios valorimétricos)
+* **🎯 Foco Principal:** Apresentar o método indirecto (custeio por processos/fases) e as ferramentas técnicas essenciais para a correcta valorização da produção em curso (unidades equivalentes e critérios FIFO/Custo Médio).
+* **🧠 Conceitos-Chave:**
+  * Acumulação de custos por departamentos, fases ou processos.
+  * Determinação do custo médio unitário = custos totais acumulados / volume de produção.
+  * Unidades equivalentes: conversão de unidades incompletas em equivalentes de produto acabado, considerando o grau de acabamento por elemento de custo.
+  * Critérios valorimétricos: FIFO (primeiras a entrar = primeiras a sair) ou Custo Médio.
+* **🧮 Fórmulas e Metodologias:**
+  * Custo unitário da fase: $$Custo\ Unit\acute{a}rio = \frac{Custos\ Totais\ Acumulados}{Volume\ de\ Produ\mbox{ç}\tilde{a}o}$$
+  * Unidades equivalentes: $Unidades\ F\acute{\imath}sicas \times Grau\ de\ Acabamento$
+* **🏭 Aplicação:** Uma fábrica de papel calcula o custo unitário por fase e valoriza correctamente a produção em curso no final do mês através de unidades equivalentes.
+* **🎓 Dica do Catedrático:** As unidades equivalentes são o concept técnico mais exigente do método indirecto; pratique o cálculo com graus de acabamento diferentes por elemento (MP, MOD, GGF).
+
+#### Capítulo 4: Perdas no processo produtivo
+* **🎯 Foco Principal:** Distinguir perdas normais de perdas anormais e explicar o tratamento contabilístico adequado em cada caso para correcta valorização da produção e controlo da eficiência.
+* **🧠 Conceitos-Chave:**
+  * Perdas normais: inerentes ao processo; custo absorvido pelas unidades boas (elevam o custo unitário).
+  * Perdas anormais: resultantes de ineficiências; reconhecidas como custo do período.
+  * Resíduos/refugos: avaliação segundo valor residual ou custo de eliminação.
+* **🏭 Aplicação:** Numa destilaria, a evaporação normal é incorporada no custo do produto; uma contaminação anormal por falha de equipamento é expurgada como custo do período.
+* **🎓 Dica do Catedrático:** Perdas normais = custo dos bons; perdas anormais = custo do período. Este é um tema clássico de controlo de gestão – saiba justificar o tratamento em exame.
+
+#### Capítulo 5: Produção conjunta (Ponto de separação + Coprodutos e subprodutos + Repartição dos custos conjuntos + Decisões após o ponto de separação)
+* **🎯 Foco Principal:** Explicar o regime de produção conjunta, o conceito de ponto de separação e os métodos de repartição de custos conjuntos, destacando a irrelevância destes custos para decisões de processamento adicional.
+* **🧠 Conceitos-Chave:**
+  * Custos conjuntos: incorridos até ao ponto de separação.
+  * Coprodutos: produtos principais com relevância económica; subprodutos: secundários com valor reduzido.
+  * Repartição: critérios usuais (quantidades, valor de venda no ponto de separação, valor líquido realizável).
+  * Decisões pós-separação: baseadas apenas em custos e proveitos incrementais (custos conjuntos são *sunk costs*).
+* **🏭 Aplicação:** Numa refinaria de petróleo, os custos até à destilação são conjuntos; a decisão de processar adicionalmente a gasolina baseia-se apenas nos custos e receitas adicionais.
+* **🎓 Dica do Catedrático:** O ponto de separação e o critério do valor líquido realizável são os conceitos chave; saiba explicar por que os custos conjuntos são irrelevantes para decisões futuras – tema avançado e frequente em questões de decisão.
+
+#### Capítulo 6: Questionário de revisão + Glossário essencial
+* **🎯 Foco Principal:** Fornecer instrumento de auto-avaliação (12 questões) e consolidar a terminologia essencial do tema para revisão final.
+* **🧠 Conceitos-Chave:**
+  * Questões de aplicação directa dos conceitos (diferença contínua/descontínua, unidades equivalentes, perdas, produção conjunta, etc.).
+  * Glossário: base de imputação, coeficiente de imputação, custos conjuntos/específicos, ponto de separação, valor líquido realizável, etc.
+* **🏭 Aplicação:** Um aluno resolve o questionário para verificar se domina a escolha de método segundo o regime de fabrico e o tratamento de perdas/perdas anormais.
+* **🎓 Dica do Catedrático:** Resolva o questionário e compare com a chave de respostas – é o melhor exercício de consolidação antes do exame. O glossário é o seu mapa de termos técnicos.
+
+***
+
+### 📄 Documento: Guia-Pedagogico-Analise-Custos-Expandido.pdf
+
+#### Capítulo 1: Conceito Fundamental — Custos Industriais do Período (CIP)
+* **🎯 Foco Principal:** Definir o CIP como o total de recursos consumidos na produção industrial de um período, distinguindo rigorosamente o que integra o CIP do que são custos do período (administrativos, comerciais e financeiros), de forma a garantir a correcta valorização do produto e evitar erros comuns na contabilidade de custos.
+* **🧠 Conceitos-Chave:**
+  * $CIP = Custos\ Directos + Custos\ Indirectos\ de\ Fabrico\ (MP\ consumidas,\ MOD,\ CIF)$.
+  * CIF inclui energia da fábrica, amortizações de equipamentos industriais, manutenção e supervisão da produção.
+  * Custos excluídos: administrativos (salários de escritório), comerciais (publicidade, comissões) e financeiros (juros).
+* **🏭 Aplicação no Mundo Real:** Uma fábrica de calçado calcula o CIP para valorizar o stock de sapatos, incluindo apenas custos de fábrica e excluindo salários da administração e publicidade.
+* **🎓 Dica do Catedrático:** Os custos administrativos e comerciais nunca entram no CIP – este é o erro mais frequente dos alunos; memorize a lista de exclusões e aplique-a sempre em exercícios.
+
+#### Capítulo 2: Custos Directos vs. Custos Indirectos
+* **🎯 Foco Principal:** Distinguir custos directos (atribuíveis de forma objectiva e inequívoca a um produto) de custos indirectos (partilhados por vários produtos e que exigem imputação), sublinhando que a classificação é relativa ao objecto de custo escolhido.
+* **🧠 Conceitos-Chave:**
+  * Custos Directos: relação causa-efeito clara (ex.: matéria-prima incorporada, MOD específica, embalagem dedicada).
+  * Custos Indirectos: partilhados (ex.: energia da fábrica, salário do supervisor, amortização de máquinas usadas por vários produtos).
+  * A distinção depende do objecto de custeio (um custo pode ser directo para um departamento mas indirecto para um produto específico).
+* **🏭 Aplicação no Mundo Real:** Numa fábrica de mobiliário, a madeira nobre é directa ao móvel encomendado, enquanto a depreciação da serra é indirecta e rateada por horas-máquina.
+* **🎓 Dica do Catedrático:** Nunca classifique um custo como directo ou indirecto sem verificar a relação causa-efeito com o objecto de custo – esta relatividade é tema clássico de exame.
+
+#### Capítulo 3: Imputação de Custos Indirectos
+* **🎯 Foco Principal:** Explicar o processo de imputação dos custos indirectos através de bases de imputação causais e cálculo da taxa de imputação, com exemplos práticos de bases comuns e o risco de distorção quando a base é inadequada.
+* **🧠 Conceitos-Chave:**
+  * Imputação: distribuição racional dos CIF pelos produtos.
+  * Base de imputação mais comum: HMOD (produção intensiva em trabalho), HM (intensiva em equipamentos), unidades produzidas, custo da MP.
+  * Taxa de imputação = Custos Indirectos Totais / Base Total.
+  * Custo imputado = Taxa $\times$ Consumo do produto.
+* **🧮 Fórmulas e Metodologias:**
+  * Taxa de Imputação: $$Taxa\ de\ Imputa\mbox{ç}\tilde{a}o = \frac{CIF\ Totais}{Base\ Total}$$
+  * Custo Imputado: $Taxa \times Consumo\ do\ produto$
+* **🏭 Aplicação no Mundo Real:** Uma empresa com $6.000\ €$ de CIF e $4.000$ horas MOD (base HMOD) calcula taxa de $1,50\ €/\text{hora}$ e reparte $2.250\ €$ para o Produto A e $3.750\ €$ para o Produto B.
+* **🎓 Dica do Catedrático:** A escolha da base deve ter relação causal; uma base inadequada distorce os custos e leva a decisões erradas – memorize as bases mais comuns e o exemplo numérico.
+
+#### Capítulo 4: Custo Industrial Unitário (CIU)
+* **🎯 Foco Principal:** Calcular o Custo Industrial Unitário (CIU) como o custo de produzir uma única unidade, decompondo-o nos seus componentes (MP, MOD, CIF) e destacando o efeito de escala dos custos fixos.
+* **🧠 Conceitos-Chave:**
+  * CIU = CIP Total do Produto / Número de Unidades Produzidas.
+  * Componentes: custo unitário de MP (directo/variável), MOD (directo/variável), CIF (indirecto/fixo ou variável).
+  * Efeito de escala: o CIU diminui quando a produção aumenta (custos fixos diluídos).
+* **🧮 Fórmulas e Metodologias:** $$CIU = \frac{CIP\ Total}{Unidades\ produzidas}$$
+* **🏭 Aplicação no Mundo Real:** Uma empresa que produz $10.000$ unidades com CIP de $9.200\ €$ obtém CIU de $0,92\ €$; se produzir $15.000$ unidades, o CIU cai devido à diluição dos CIF fixos.
+* **🎓 Dica do Catedrático:** O CIU é o custo por unidade; saiba decompor os três componentes e explicar o efeito de escala – aparece sempre em questões de cálculo e interpretação.
+
+#### Capítulo 5: Produção vs. Vendas + Fluxo de Stocks
+* **🎯 Foco Principal:** Explicar a diferença fundamental entre produção e vendas e o impacto no stock final, apresentando o fluxo completo de stocks e os três cenários possíveis (produção $>$, $=$ ou $<$ vendas).
+* **🧠 Conceitos-Chave:**
+  * Produção $>$ Vendas $\rightarrow$ stock final aumenta.
+  * Produção $=$ Vendas $\rightarrow$ stock final $=$ stock inicial.
+  * Produção $<$ Vendas $\rightarrow$ stock final diminui.
+  * Fluxo: Stock Inicial + Produção = Disponível para Venda; Disponível – Vendas = Stock Final.
+* **🏭 Aplicação no Mundo Real:** Uma fábrica com stock inicial de $200\text{ un.}$, produção de $10.000\text{ un.}$ e vendas de $9.500\text{ un.}$ termina com stock final de $700\text{ un.}$
+* **🎓 Dica do Catedrático:** Produção e vendas não são sinónimos; confundi-las é o erro mais grave no cálculo de CIPA/CIPV – memorize o fluxo e os três cenários.
+
+#### Capítulo 6: CMP, CIPA e CIPV
+* **🎯 Foco Principal:** Definir e calcular o Custo Mergido de Produção (CMP), o Custo Industrial da Produção Acabada (CIPA) e o Custo Industrial da Produção Vendida (CIPV), com exemplo completo e verificação de consistência.
+* **🧠 Conceitos-Chave:**
+  * CMP = (Valor do Stock Inicial + CIP do Período) / (Stock Inicial + Produção).
+  * CIPA = Produção do Período $\times$ CMP.
+  * CIPV = Unidades Vendidas $\times$ CMP.
+  * Stock Final = Disponível – CIPV (verificação: Disponível = CIPV + Stock Final).
+* **🧮 Fórmulas e Metodologias:** $$CMP = \frac{Valor\ do\ Stock\ Inicial + CIP\ do\ Per\acute{\imath}odo}{Stock\ Inicial\ (un) + Produ\mbox{ç}\tilde{a}o\ (un)}$$
+* **🏭 Aplicação no Mundo Real:** A empresa ALFA calcula CMP de $0,9196\ €$, CIPA de $9.196\ €$ e CIPV de $8.736\ €$ para valorizar correctamente o stock final e a demonstração de resultados.
+* **🎓 Dica do Catedrático:** O CMP é o custo médio ponderado; pratique o exemplo completo e verifique sempre o equilíbrio do quadro de stocks – exercício clássico de exame.
+
+#### Capítulo 7: Esquema Global de Custos e Stocks
+* **🎯 Foco Principal:** Apresentar a visão integrada do fluxo completo de custos e stocks, desde a acumulação até ao apuramento do resultado, de forma a permitir ao aluno compreender o percurso económico dos recursos e verificar a consistência de todos os cálculos.
+* **🧠 Conceitos-Chave:**
+  * Acumulação: MP + MOD + CIF = CIP.
+  * Unitarização: CIP / Unidades produzidas = CIU.
+  * Valorização do stock: CMP = (SI€ + CIP) / (SI_un + Prod_un).
+  * Custo das vendas: CIPV = Vendas $\times$ CMP.
+  * Stock final = Disponível – CIPV.
+  * Resultado = Vendas – CIPV – Custos Comerciais – Custos Administrativos.
+* **🧮 Fórmulas e Metodologias:**
+  * $Dispon\acute{\imath}vel = SI + Produ\mbox{ç}\tilde{a}o$
+  * $Stock\ Final = Dispon\acute{\imath}vel - Vendas\ (\text{em valor})$
+  * Verificação: $Dispon\acute{\imath}vel = CIPV + Stock\ Final$
+* **🏭 Aplicação no Mundo Real:** Uma fábrica industrial reconcilia o fluxo de stocks e custos para preparar a Demonstração de Resultados e o Balanço, garantindo que o custo das vendas (CIPV) é correctamente apurado.
+* **🎓 Dica do Catedrático:** Este esquema global é o “mapa” de todo o processo – memorize-o e verifique sempre o equilíbrio do quadro de stocks; é o passo que detecta erros de cálculo em exame.
+
+#### Capítulo 8: Margem — Conceito e Tipos
+* **🎯 Foco Principal:** Definir o conceito de margem e distinguir os principais tipos (Bruta, de Contribuição, Líquida e Comercial), com fórmulas e exemplos, para avaliar a rentabilidade dos produtos e apoiar decisões de gestão.
+* **🧠 Conceitos-Chave:**
+  * Margem = Preço de Venda – Custo (em € ou %).
+  * Margem Bruta (Industrial): PV – CIPV.
+  * Margem de Contribuição: PV – Custos Variáveis (base para ponto crítico).
+  * Margem Líquida: PV – Todos os custos (resultado final).
+  * Margem Comercial (empresas comerciais): PV – CCMV.
+  * Mark-up vs. Margem: diferença de base de cálculo.
+* **🧮 Fórmulas e Metodologias:**
+  * Margem Bruta \%: $$\frac{PV - CIPV}{PV} \times 100$$
+  * Margem de Contribuição ($MC$): $PV - CV$
+  * Ponto Crítico: $$\frac{Custos\ Fixos}{MC\ Unit\acute{a}ria}$$
+  * Margem Líquida \%: $$\frac{Resultado}{Vendas} \times 100$$
+* **🏭 Aplicação no Mundo Real:** Uma empresa que vende um produto a $1,20\ €$ com CIPV de $0,75\ €$ obtém margem bruta de $0,45\ €$ ($37,5\%$); com CV de $0,60\ €$, a MC de $0,60\ €$ permite calcular o ponto crítico em $5.000$ unidades.
+* **🎓 Dica do Catedrático:** Não confunda margem com mark-up (base PV vs. base custo) nem use margem bruta para ponto crítico – use sempre margem de contribuição; este capítulo é o mais prático para decisões de gestão.
+
+#### Capítulo 9: Interpretação de Resultados
+* **🎯 Foco Principal:** Interpretar os resultados da análise de custos (margem positiva, zero ou negativa) e indicar as acções estratégicas adequadas, incluindo os cuidados antes de descontinuar um produto com margem negativa.
+* **🧠 Conceitos-Chave:**
+  * Margem positiva: preço cobre custo + lucro $\rightarrow$ manter/expandir.
+  * Margem = 0 (break-even): preço cobre exactamente o custo $\rightarrow$ rever estrutura ou preço.
+  * Margem negativa: custo $>$ preço $\rightarrow$ investigar redução de custos, aumento de preço ou descontinuação.
+  * Antes de descontinuar: verificar MC positiva, carácter temporário, imputação correcta e potencial de melhoria de preço.
+* **🏭 Aplicação no Mundo Real:** Um produto com margem negativa de $3,6\%$ mas MC positiva pode ser mantido no curto prazo se contribui para cobertura de custos fixos.
+* **🎓 Dica do Catedrático:** Interpretação $>$ cálculo; saiba justificar quando aceitar ou recusar um produto com margem negativa – tema de decisão estratégica garantido em exame.
+
+#### Capítulo 10: Tomada de Decisão
+* **🎯 Foco Principal:** Transformar os cálculos em decisões de gestão concretas (encomenda especial, recursos limitados, descontinuação), enfatizando que o valor da análise de custos reside na capacidade de interpretar números e gerar acções fundamentadas.
+* **🧠 Conceitos-Chave:**
+  * Encomenda especial: aceitar se MC $> 0$ (contribui para cobertura de fixos).
+  * Recursos limitados: priorizar produto com maior MC por unidade de recurso escasso.
+  * Perguntas essenciais: cobre custo industrial? cobre custos variáveis? é rentável globalmente? qual o volume mínimo?
+* **🧮 Fórmulas e Metodologias:** $$Prioridade = \frac{MC\ unit\acute{a}ria}{Recurso\ consumido\ por\ unidade}$$
+* **🏭 Aplicação no Mundo Real:** Uma empresa com capacidade limitada aceita encomenda especial a preço inferior ao habitual se o preço proposto $>$ custo variável, maximizando a contribuição total.
+* **🎓 Dica do Catedrático:** Calcular não chega – interprete e decida; domine as decisões de encomenda especial e recursos limitados – são os temas mais exigentes de aplicação prática.
+
+#### Capítulo 11: Erros Comuns dos Alunos + Resumo Final — Mapa de Conceitos + Sequência lógica de resolução de exercícios
+* **🎯 Foco Principal:** Alertar para os erros mais frequentes, fornecer o mapa de conceitos resumido e a sequência lógica de resolução de exercícios, consolidando todo o guia numa ferramenta de revisão final.
+* **🧠 Conceitos-Chave:**
+  * Erros clássicos: incluir custos adm./comerciais no CIP, esquecer stock inicial no CMP, confundir produção com vendas, aplicar mal a base de imputação, confundir margem com mark-up.
+  * Mapa de conceitos: classificação, imputação, CIU, fluxo de stocks, valorização, margens, decisão.
+  * Sequência lógica de 8 passos para resolver qualquer exercício.
+* **🏭 Aplicação no Mundo Real:** O aluno segue a sequência (classificar $\rightarrow$ imputar $\rightarrow$ calcular CMP/CIPA/CIPV $\rightarrow$ margens $\rightarrow$ interpretar) para resolver um exercício completo sem erros.
+* **🎓 Dica do Catedrático:** Este capítulo é o “check-list” final; memorize os 8 erros e a sequência de 8 passos – é a melhor forma de garantir nota máxima na avaliação.
+
+***
+
+### 📄 Documento: Manual de Contabilidade de Custos e Análise CVR — Guia para Alunos.pdf
+
+#### Capítulo 1: Apresentação + Abreviaturas e Siglas + Parte I — Contabilidade de Custos e Classificação dos Gastos (1.1 a 1.3)
+* **🎯 Foco Principal:** Apresentar a contabilidade de custos como sistema interno de informação que supera as limitações da contabilidade financeira, definindo o seu papel na tomada de decisão e classificando os custos/gastos segundo três critérios fundamentais (relevantes/irrelevantes, directos/indirectos, fixos/variáveis/semi-variáveis).
+* **🧠 Conceitos-Chave:**
+  * Contabilidade de Custos: mede, classifica e disponibiliza custos de produção, actividades e serviços para apoiar a gestão (apurar custos por produto/função, valorizar inventários, fixar preços, controlar exploração, tomar decisões *make-or-buy*, elaborar orçamentos).
+  * Gasto/Custo: valor monetário do consumo de recursos para um propósito específico (ótica económica).
+  * Classificações:
+    * Relevantes (alteram-se com a decisão) vs. Irrelevantes (invariáveis).
+    * Directos (identificáveis directamente com o objecto de custo) vs. Indirectos (comuns, exigem rateio).
+    * Fixos (constantes no curto prazo), Variáveis (proporcionais ao volume), Semi-variáveis (fixo + variável).
+* **🏭 Aplicação no Mundo Real:** Uma empresa com capacidade ociosa analisa uma encomenda especial: custos variáveis (matérias, energia) são relevantes; custos fixos da contabilidade são irrelevantes.
+* **🎓 Dica do Catedrático:** A classificação é relativa ao objecto de custo (ex.: energia de uma secção é directa para a secção mas indirecta para o produto). Memorize os três critérios — são a base de toda a contabilidade de custos e aparecem em quase todas as questões teóricas.
+
+#### Capítulo 2: Parte II — Análise Custo-Volume-Resultado (CVR) (2.1 a 2.8)
+* **🎯 Foco Principal:** Explicar a análise CVR como ferramenta para estudar a relação custos-volume-resultado no curto prazo, com foco no ponto de equilíbrio, margens, margem de segurança, análise de sensibilidade e grau de alavancagem operacional.
+* **🧠 Conceitos-Chave:**
+  * Equação base: $R = PV \times Q - CV_u \times Q - CF$
+  * Ponto de Equilíbrio ($PE$): em quantidade $Q' = \frac{CF}{PV - CV_u}$; em valor $V' = \frac{CF}{m'}$ onde $m' = \frac{PV - CV_u}{PV}$.
+  * Margem de Contribuição ($MC$): unitária $m = PV - CV_u$; global $MC = Q \times m$; percentual $m'$.
+  * Margem de Segurança ($MS$): distância ao PE (em quantidade, valor ou %).
+  * GAO: grau de alavancagem operacional (multiplicador de sensibilidade do resultado às vendas).
+  * Análise de sensibilidade e PE em multiproduto (mix constante ou ponderado).
+* **🧮 Fórmulas e Metodologias:**
+  * Equação Base: $R = PV \times Q - CV_u \times Q - CF$
+  * Quantidade no PE ($Q'$): $$Q' = \frac{CF}{PV - CV_u}$$
+  * Valor no PE ($V'$): $$V' = \frac{CF}{m'}\quad \text{onde}\quad m' = \frac{PV - CV_u}{PV}$$
+  * GAO: $$GAO = \frac{MC}{RO} = \frac{V - CV}{RO}$$
+* **🏭 Aplicação no Mundo Real:** Uma empresa com $CF = 480.000\ €$, $PV = 20\ €$ e $CV_u = 10\ €$ atinge PE em $48.000$ unidades; com vendas de $60.000$ unidades tem MS de $20\%$.
+* **🎓 Dica do Catedrático:** Pressupostos da CVR (curto prazo, linearidade, mix constante) são cruciais. Use sempre MC para ponto crítico e GAO para medir risco operacional — temas centrais de exame.
+
+#### Capítulo 3: Parte III — Sistemas e Métodos de Custeio (3.1 a 3.6)
+* **🎯 Foco Principal:** Apresentar os sistemas de custeio (Total, Variável, Racional) e os métodos de acumulação (directo/job costing vs. indirecto/process costing), including o ABC e a repartição de custos indirectos.
+* **🧠 Conceitos-Chave:**
+  * Sistemas: Total (absorção — todos os custos industriais), Variável (apenas CV), Racional (CV + CF proporcionais à actividade normal).
+  * Métodos: Job Costing (por encomenda) vs. Process Costing (por processo).
+  * Repartição indirectos: primária (aos centros), secundária (auxiliares para principais), terciária (aos produtos).
+  * ABC: actividades consomem recursos $\rightarrow$ indutores imputam custos aos produtos.
+* **🏭 Aplicação no Mundo Real:** Uma fábrica com capacidade normal $25.000\text{ un.}$ e produção real $20.000\text{ un.}$ usa SCR para imputar apenas $80\%$ dos CF industriais; o resto (subactividade) vai a resultados.
+* **🎓 Dica do Catedrático:** O SCT é o mais usado para relato financeiro e recomendado pela NCP 27; o SCV facilita CVR. Domine as vantagens/desvantagens e o ABC como evolução para ambientes complexos.
+
+#### Capítulo 4: Parte IV — Exercícios Práticos (Exercícios 1 a 6)
+* **🎯 Foco Principal:** Resolver exercícios práticos completos de CVR (PE, MS, MC, GAO, sensibilidade) e sistemas de custeio (SCT vs. SCR, ABC), consolidando todos os conceitos anteriores.
+* **🧠 Conceitos-Chave:**
+  * Exercício 1: PE, MS e MC num produto único.
+  * Exercício 2: PE multiproduto pelo método do valor das vendas.
+  * Exercício 3: Análise de sensibilidade (redução de preço).
+  * Exercício 4: GAO em duas áreas.
+  * Exercício 5: Comparação SCT vs. SCR com subactividade.
+  * Exercício 6: Imputação ABC com bases múltiplas.
+* **🧮 Fórmulas e Metodologias:** Aplicação directa de todas as fórmulas da Parte II e III, com cálculos passo a passo e verificações.
+* **🏭 Aplicação no Mundo Real:** Uma empresa decide aceitar/rejeitar encomendas, calcular PE multiproduto ou avaliar impacto de subactividade usando os exercícios como modelo.
+* **🎓 Dica do Catedrático:** Pratique estes exercícios na íntegra — são representativos do exame. Verifique sempre os cálculos (ex.: Disponível = CIPV + Stock Final) e interprete os resultados.
+
+#### Capítulo 5: Formulário de Referência Rápida
+* **🎯 Foco Principal:** Fornecer tabelas de resumo com todas as fórmulas essenciais de CVR e sistemas de custeio para consulta rápida durante a resolução de exercícios ou avaliação.
+* **🧠 Conceitos-Chave:**
+  * Tabela CVR completa (R, PE, MC, MS, GAO).
+  * Tabela de sistemas de custeio (o que incorpora cada um).
+* **🎓 Dica do Catedrático:** Este formulário é o “caderno de bolso” ideal para o exame — memorize as fórmulas chave e use-o como check-list.
