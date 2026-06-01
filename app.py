@@ -9,7 +9,7 @@ EdTech app em Streamlit com:
   • Carregamento de múltiplos resumos (.txt / .md)
   • Apresentação por Tabs — uma por capítulo + duas Tabs inteligentes
   • Loop de Consenso Dinâmico entre 3 agentes NVIDIA NIM:
-        👑 Chefe       — meta/llama-3.1-405b-instruct
+        👑 Chefe       — meta/llama-3.1-nemotron-70b-instruct //llama-3.1-405b-instruct
         🅰️ Validador A — mistralai/mistral-large-2-instruct
         🅱️ Validador B — meta/llama-3.1-70b-instruct
     com a REGRA DE OURO: nenhum agente avalia ou reescreve o seu próprio output.
@@ -167,7 +167,7 @@ SECTION_MARKERS: Dict[str, str] = {
 # sequência em que os validadores são chamados em cada ronda.
 AGENTS_ORDER = ["Chefe", "Validador A", "Validador B"]
 AGENTS: Dict[str, Dict[str, str]] = {
-    "Chefe":       {"model": "meta/llama-3.1-405b-instruct",       "icon": "👑"},
+    "Chefe": {"model": "nvidia/llama-3.1-nemotron-70b-instruct", "icon": "👑"},
     "Validador A": {"model": "mistralai/mistral-large-2-instruct", "icon": "🅰️"},
     "Validador B": {"model": "meta/llama-3.1-70b-instruct",        "icon": "🅱️"},
 }
