@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
 
 import streamlit as st
-from pypdf import PdfReader
+import fitz                     # <-- PyMuPDF (fitz) instead of pypdf
 from openai import OpenAI, OpenAIError
 
 # =============================================================================
@@ -35,7 +35,7 @@ Para cada tema, capítulo ou secção identificável no texto, gera uma secção
 
    * **🎯 Foco Principal:** Uma frase cirúrgica, densa e altamente condensada que defina o objetivo central, a utilidade estratégica ou o problema fundamental que o capítulo se propõe resolver.
 
-   * **🧠 Conceitos-Chave e Dissecção Teórica:** Explicações pormenorizadas e profundas de todos os termos técnicos, premissas, teoremas ou perspetivas teóricas. Utiliza uma taxonomia hierárquica rigorosa com sub‑tópicos (bullets encadeados) para dissecar sub‑conceitos, analisar trade‑offs, limitações das teorias e impactos operacionais. Não uses resumos generalistas; vai ao detalhe anatómico do conceito.
+   * **🧠 Conceitos-Chave e Dissecção Teórica:** Explicações pormenorizadas e profundas de todos os termos técnicos, premissas, teoremas ou perspetivas teóricas. Utiliza uma taxonomia hierárquica rigorosa com sub‑tópicos (bullets encadeados) para dissecar sub‑conceitos, analisar trade‑offs, limitações das teorias e impactos operacionais. Não uses resumos generalists; vai ao detalhe anatómico do conceito.
 
    * **🧮 Fórmulas, Metodologias e Deduções:** Apresenta todas as equações matemáticas, algoritmos, matrizes ou frameworks de cálculo de forma explícita. É OBRIGATÓRIO o uso de sintaxe LaTeX: usa $...$ para equações na linha de texto e $$...$$ para blocos de equações isolados e destacados. Logo após a fórmula, define detalhadamente o significado científico e a unidade de cada variável matemática utilizada. Se o texto original descrever uma relação quantitativa de forma textual, traduz essa relação numa fórmula matemática formal em LaTeX.
 
@@ -102,11 +102,11 @@ NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 # 2. HELPER FUNCTIONS
 # =============================================================================
 def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Extracts raw text from a PDF using pypdf."""
-    reader = PdfReader(io.BytesIO(file_bytes))
+    """Extracts raw text from a PDF using PyMuPDF (fitz)."""
+    doc = fitz.open(stream=file_bytes, filetype="pdf")
     text = []
-    for page in reader.pages:
-        text.append(page.extract_text() or "")
+    for page in doc:
+        text.append(page.get_text())
     return "\n".join(text)
 
 
@@ -597,7 +597,7 @@ with st.sidebar:
                 st.session_state.agent_models = {
                     "Chefe":       "meta/llama-3.3-70b-instruct",
                     "Validador A": "mistralai/mistral-large-2-instruct",
-                    "Validador B": "meta/llama-3.1-70b-invest",  # note: typo intentional? keep as given
+                    "Validador B": "meta/llama-3.1-70b-instruct",
                 }
                 st.rerun()
         with col_rst2:
