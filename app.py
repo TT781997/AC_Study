@@ -1,34 +1,47 @@
 """
-app.py — Plataforma Análise de Custos ISEL (Consenso Multi-Agente) — v3.0
+app.py — Plataforma Universitária de Estudo Multi-Agente — v4.0
 ============================================================================
 
-Mudanças face à v2.0:
-  • IDENTIDADE ISEL CORRETA — paleta Bordeaux oficial (#9A3324) + Warm Gray
-    6C/11C, logo oficial do ISEL na sidebar.
-  • SELECTOR DE MODELOS (dropdown) — registry curado dos modelos NVIDIA NIM
-    2026 (Nemotron 3 Super, MiniMax M2.7, GLM-5.1, DeepSeek V4, Gemma 4,
-    Kimi K2.6, Step-3.x, GPT-OSS 120B, etc.) com descrição "best for" cada.
-    Opção "✏️ Personalizado…" para qualquer outro modelo.
-  • MULTI-IDIOMA — UI em PT / EN / ES / FR / DE; o resumo e a avaliação são
-    SEMPRE produzidos no idioma escolhido, qualquer que seja a língua do PDF.
-  • LOADING INTERATIVO — emoji animado por CSS + mensagens divertidas que
-    rodam de 15s em 15s + GIFs opcionais que rodam de 30s em 30s + contador
-    de tempo decorrido. Sem bloquear a stream de saída do LLM.
-  • Tudo o resto da v2.0 mantido: persistência estrita, chunking defensivo,
-    consenso circular, base de dados apagável só por botão.
+Refactor estrutural face à v3.0:
 
-Dependências:
-    pip install streamlit openai PyMuPDF
+  • AGNÓSTICA À CADEIRA — funciona para QUALQUER disciplina universitária
+    (Engenharia, Ciências, Humanidades, Saúde, Direito, Economia…). Prompts
+    purgados de "Análise de Custos" e referências institucionais.
 
-Execução:
-    streamlit run app.py
+  • 4 AGENTES ESPECIALIZADOS (em vez de 3 genéricos):
+      👑 Chefe Redator        — Autor do draft inicial
+      🔬 Verificador Técnico  — Caça erros de cálculos / fórmulas / factos
+      🎓 Verificador Pedagógico — Clareza, estrutura didáctica, ambiguidades
+      🧑‍🎓 Aluno Crítico       — Perspectiva do utilizador final (dificuldade
+                                  adequada, perguntas fora-de-âmbito)
+
+  • DEBATE VEREDICT-FIRST — validadores começam OBRIGATORIAMENTE com
+    `DECISION: APPROVE` ou `DECISION: REWRITE` na 1ª linha. Quem aprova
+    gasta ~50 tokens (~3-5s); quem reescreve usa max_tokens completos.
+    Marcador universal `--- REWRITTEN TEST ---` separa o veredicto do
+    teste reescrito. Resultado: discussão muito mais rápida e assertiva.
+
+  • COBERTURA TOTAL DO PDF — prompt do Catedrático com instrução explícita
+    "COBRE INTEGRALMENTE TUDO" e secção `## 📋 Cobertura` no fim.
+    Para PDFs multi-chunk: fase opcional de verificação de cobertura que
+    detecta lacunas e expande o resumo (toggle na sidebar).
+
+  • TIMER DINÂMICO — chamada LLM corre em worker thread; main thread faz
+    polling com timeout=0.5s ⇒ o contador avança a cada meio segundo,
+    mesmo enquanto se espera pelo primeiro chunk. ETA estimada por modelo
+    + recalibração após receber chunks reais.
+
+Dependências:  pip install streamlit openai PyMuPDF
+Execução:      streamlit run app.py
 """
 
 from __future__ import annotations
 
 import random
+import threading
 import time
 from dataclasses import dataclass, field
+from queue import Empty, Queue
 from typing import Dict, List, Optional
 
 import fitz  # PyMuPDF
@@ -40,8 +53,8 @@ from openai import OpenAI, OpenAIError
 # 1. PAGE CONFIG
 # =============================================================================
 st.set_page_config(
-    page_title="ISEL · Análise de Custos",
-    page_icon="📊",
+    page_title="ISEL · Plataforma Universitária de Estudo",
+    page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -50,21 +63,20 @@ st.set_page_config(
 # =============================================================================
 # 2. PALETA ISEL OFICIAL (Bordeaux + Warm Gray)
 # =============================================================================
-# Fonte: Manual de Normas do ISEL — Bordeaux #9A3324 (Pantone 484 C).
-# Cinzentos secundários: Pantone Warm Gray 6C e 11C.
-ISEL_PRIMARY    = "#9A3324"   # Bordeaux institucional
-ISEL_PRIMARY_DK = "#7A271C"   # Bordeaux escuro (hover)
-ISEL_PRIMARY_LT = "#C45A4A"   # Bordeaux claro (acento)
-ISEL_GRAY_6     = "#A6A19E"   # Warm Gray 6C (cinzento claro)
-ISEL_GRAY_11    = "#6E6259"   # Warm Gray 11C (cinzento escuro / texto secundário)
-ISEL_BG         = "#FAF7F4"   # Off-white quente
+ISEL_PRIMARY    = "#9A3324"   # Bordeaux (Pantone 484 C)
+ISEL_PRIMARY_DK = "#7A271C"
+ISEL_PRIMARY_LT = "#C45A4A"
+ISEL_GRAY_6     = "#A6A19E"   # Warm Gray 6C
+ISEL_GRAY_11    = "#6E6259"   # Warm Gray 11C
+ISEL_BG         = "#FAF7F4"
 ISEL_SURFACE    = "#FFFFFF"
 ISEL_BORDER     = "#E8E2DC"
-ISEL_TEXT       = "#2A1F1A"   # Quase-preto quente
-ISEL_SUCCESS    = "#5B7F4C"   # Verde sereno
-ISEL_WARN       = "#C49A2E"   # Amarelo bordeaux-compatível
+ISEL_TEXT       = "#2A1F1A"
+ISEL_SUCCESS    = "#5B7F4C"
+ISEL_WARN       = "#C49A2E"
 
 ISEL_LOGO_URL = "https://www.isel.pt/themes/gavias_unix/images/01_ISEL-Logotipo-RGB_Horizontal-Principal-900.png"
+
 
 # =============================================================================
 # 3. CSS — IDENTIDADE ISEL + ANIMAÇÕES DE LOADING
@@ -80,11 +92,9 @@ h1 {{ letter-spacing: -0.02em; }}
 [data-testid="stSidebar"] {{ background-color: {ISEL_SURFACE}; border-right: 1px solid {ISEL_BORDER}; }}
 [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{ color: {ISEL_PRIMARY} !important; }}
 
-/* Logo ISEL no topo da sidebar */
 .isel-logo-wrap {{
     background: {ISEL_SURFACE}; padding: 0.5rem 0.5rem 1rem 0.5rem;
-    border-bottom: 2px solid {ISEL_PRIMARY}; margin-bottom: 1rem;
-    text-align: center;
+    border-bottom: 2px solid {ISEL_PRIMARY}; margin-bottom: 1rem; text-align: center;
 }}
 .isel-logo-wrap img {{ max-width: 180px; height: auto; }}
 .isel-logo-fallback {{
@@ -93,10 +103,9 @@ h1 {{ letter-spacing: -0.02em; }}
 }}
 
 .stButton > button, .stDownloadButton > button {{
-    background-color: {ISEL_PRIMARY}; color: white !important;
-    border: none; border-radius: 6px; padding: 0.55rem 1.4rem;
-    font-weight: 600; transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(154, 51, 36, 0.20);
+    background-color: {ISEL_PRIMARY}; color: white !important; border: none;
+    border-radius: 6px; padding: 0.55rem 1.4rem; font-weight: 600;
+    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(154, 51, 36, 0.20);
 }}
 .stButton > button:hover, .stDownloadButton > button:hover {{
     background-color: {ISEL_PRIMARY_DK}; transform: translateY(-1px);
@@ -147,11 +156,11 @@ h1 {{ letter-spacing: -0.02em; }}
 
 .agent-card {{
     background-color: {ISEL_SURFACE}; border: 1px solid {ISEL_BORDER};
-    border-radius: 10px; padding: 1rem 1.1rem;
-    border-left: 4px solid {ISEL_PRIMARY};
+    border-radius: 10px; padding: 1rem 1.1rem; border-left: 4px solid {ISEL_PRIMARY};
 }}
-.agent-card .role {{ color: {ISEL_PRIMARY}; font-weight: 700; }}
-.agent-card .model {{ color: {ISEL_GRAY_11}; font-size: 0.82rem; font-family: ui-monospace, monospace; word-break: break-all; }}
+.agent-card .role {{ color: {ISEL_PRIMARY}; font-weight: 700; font-size: 0.95rem; }}
+.agent-card .role-desc {{ color: {ISEL_GRAY_11}; font-size: 0.78rem; font-style: italic; margin: 0.15rem 0 0.3rem 0; }}
+.agent-card .model {{ color: {ISEL_GRAY_11}; font-size: 0.75rem; font-family: ui-monospace, monospace; word-break: break-all; }}
 
 .round-tag {{
     display: inline-block; background: {ISEL_PRIMARY}; color: white;
@@ -202,6 +211,7 @@ h1 {{ letter-spacing: -0.02em; }}
 .loading-fun .body {{ flex: 1; }}
 .loading-fun .msg {{ font-weight: 700; color: {ISEL_TEXT}; font-size: 1.0rem; }}
 .loading-fun .meta {{ color: {ISEL_GRAY_11}; font-size: 0.82rem; margin-top: 0.2rem; }}
+.loading-fun .meta .eta {{ color: {ISEL_PRIMARY}; font-weight: 600; }}
 .loading-fun .progress-bar {{
     height: 6px; background: {ISEL_BORDER}; border-radius: 3px;
     margin-top: 0.5rem; overflow: hidden;
@@ -234,121 +244,179 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # =============================================================================
-# 4. REGISTRY DE MODELOS NVIDIA NIM (2026) — com descrições "best for"
+# 4. REGISTRY DE MODELOS NVIDIA NIM (2026)
+#    `est_seconds_4k` = estimativa empírica de tempo (segundos) para gerar
+#    max_tokens=4000. Usada para ETA do LoadingAnimator.
 # =============================================================================
-MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
+MODEL_REGISTRY: Dict[str, Dict[str, object]] = {
     "nvidia/nemotron-3-super-120b-a12b": {
         "label": "🥇 NVIDIA Nemotron 3 Super 120B-A12B",
-        "best_for": "Flagship NVIDIA. MoE 120B (12B activos), 1M de contexto, raciocínio agentic + RAG + tarefas longas. Excelente como Chefe e para resumos densos.",
+        "best_for": "Flagship NVIDIA. MoE 120B (12B activos), 1M de contexto, raciocínio agentic + RAG. Excelente como Chefe Redator e para resumos densos.",
+        "est_seconds_4k": 90,
     },
     "minimaxai/minimax-m2.7": {
         "label": "💼 MiniMax M2.7 (230B)",
-        "best_for": "Especialista em engenharia de software, tarefas agentic longas, entrega profissional de documentos. Compete com Claude em coding. Ótimo como validador rigoroso.",
+        "best_for": "Eng. de software, agentic longo, entrega profissional. Compete com Claude em coding. Ótimo Verificador Pedagógico.",
+        "est_seconds_4k": 70,
     },
     "moonshotai/kimi-k2.6": {
         "label": "📚 Moonshot Kimi K2.6",
-        "best_for": "Especialista em compreensão de contexto extremamente longo e síntese de documentos. Ideal para resumir PDFs grandes ou para validar coerência global.",
+        "best_for": "Contexto extremamente longo, síntese de documentos. Ideal para resumir PDFs grandes ou validar coerência global.",
+        "est_seconds_4k": 100,
     },
     "deepseek-ai/deepseek-v4-pro": {
         "label": "📐 DeepSeek V4 Pro",
-        "best_for": "Top em matemática, código, raciocínio multi-passo. Forte na verificação de cálculos dos exercícios práticos da avaliação.",
+        "best_for": "Top em matemática, código, raciocínio multi-passo. Excelente Verificador Técnico — apanha erros de cálculo.",
+        "est_seconds_4k": 80,
     },
     "deepseek-ai/deepseek-v4-flash": {
         "label": "⚡ DeepSeek V4 Flash",
-        "best_for": "Versão rápida do V4 Pro. Boa qualidade mas muito mais barato em latência — perfeito para validadores rápidos.",
+        "best_for": "Versão rápida do V4 Pro. Bom para validadores que precisam de boa qualidade mas latência baixa.",
+        "est_seconds_4k": 40,
     },
     "z-ai/glm-5.1": {
         "label": "🛠️ Zhipu GLM-5.1",
-        "best_for": "200K contexto, 128K output máximo. Coding e execução agentic prolongada (multi-tool, várias horas). Ótimo para tarefas estruturadas complexas.",
+        "best_for": "200K contexto, 128K output. Coding e execução agentic prolongada multi-tool. Bom para tarefas estruturadas complexas.",
+        "est_seconds_4k": 75,
     },
     "google/gemma-4-31b-it": {
         "label": "🌐 Google Gemma 4 31B (IT)",
-        "best_for": "Multimodal (texto+imagem+vídeo), multilingue, 256K contexto, Apache 2.0. Bom equilíbrio qualidade/custo. Forte em PT-PT e outras línguas europeias.",
+        "best_for": "Multimodal, multilingue, 256K contexto, Apache 2.0. Forte em PT-PT e outras línguas europeias. Bom equilíbrio.",
+        "est_seconds_4k": 50,
     },
     "openai/gpt-oss-120b": {
         "label": "🧠 OpenAI GPT-OSS 120B",
-        "best_for": "Open-weight da OpenAI. Sólido em raciocínio geral e conhecimento amplo. Bom como Chefe alternativo se preferires o estilo da casa.",
+        "best_for": "Open-weight da OpenAI. Sólido em raciocínio geral e conhecimento amplo. Bom Chefe alternativo se preferires estilo OpenAI.",
+        "est_seconds_4k": 80,
     },
     "stepfun-ai/step-3.7-flash": {
         "label": "⚡ StepFun Step-3.7 Flash",
-        "best_for": "Inferência muito rápida, qualidade decente. Validador-friendly para ciclos rápidos aprovar/rejeitar.",
+        "best_for": "Inferência muito rápida, qualidade decente. Validator-friendly. Ideal para Aluno Crítico (rápido, ágil).",
+        "est_seconds_4k": 30,
     },
     "stepfun-ai/step-3.5-flash": {
         "label": "⚡ StepFun Step-3.5 Flash",
-        "best_for": "Versão anterior do Step Flash, ligeiramente mais rápida. Use 3.7 se disponível.",
+        "best_for": "Versão anterior do Step Flash. Use 3.7 se disponível na tua conta.",
+        "est_seconds_4k": 30,
     },
     "google/gemma-3n-e2b-it": {
         "label": "📱 Google Gemma 3n E2B (IT) — ultra-leve",
-        "best_for": "Modelo compacto (2B params efetivos via PLE). Edge/mobile. Use só como validador B se quiseres minimizar custos.",
+        "best_for": "2B params efetivos via PLE. Edge/mobile. Só como validador de último recurso para minimizar custos.",
+        "est_seconds_4k": 20,
     },
     "nvidia/llama-nemotron-embed-1b-v2": {
         "label": "⚠️ NVIDIA Nemotron Embed 1B v2 — NÃO USAR",
-        "best_for": "❌ ESTE É UM MODELO DE EMBEDDINGS (vetorização para RAG), NÃO de chat. Não consegue gerar resumos nem participar em debates. Não selecionar.",
+        "best_for": "❌ MODELO DE EMBEDDINGS (RAG), NÃO é de chat. Não consegue gerar resumos nem participar em debates. Não selecionar.",
         "warn": True,
+        "est_seconds_4k": 0,
     },
 }
 
 CUSTOM_MODEL_SENTINEL = "✏️ Personalizado…"
+DEFAULT_SPEED_ESTIMATE_4K = 60  # fallback se modelo não estiver no registry
 
-AGENTS_ORDER = ["Chefe", "Validador A", "Validador B"]
-AGENT_ICONS: Dict[str, str] = {"Chefe": "👑", "Validador A": "🅰️", "Validador B": "🅱️"}
+# =============================================================================
+# 5. AGENTES — 4 papéis especializados
+# =============================================================================
+AGENTS_ORDER: List[str] = [
+    "Chefe",
+    "Verificador Técnico",
+    "Verificador Pedagógico",
+    "Aluno Crítico",
+]
+AGENT_ICONS: Dict[str, str] = {
+    "Chefe": "👑",
+    "Verificador Técnico": "🔬",
+    "Verificador Pedagógico": "🎓",
+    "Aluno Crítico": "🧑‍🎓",
+}
 
-# Defaults bem balanceados para 2026
 DEFAULT_MODELS: Dict[str, str] = {
-    "Chefe":       "nvidia/nemotron-3-super-120b-a12b",
-    "Validador A": "minimaxai/minimax-m2.7",
-    "Validador B": "deepseek-ai/deepseek-v4-flash",
+    "Chefe":                  "nvidia/nemotron-3-super-120b-a12b",  # qualidade top no draft
+    "Verificador Técnico":    "deepseek-ai/deepseek-v4-pro",         # matemática / precisão
+    "Verificador Pedagógico": "minimaxai/minimax-m2.7",              # estrutura, multilingue
+    "Aluno Crítico":          "stepfun-ai/step-3.7-flash",           # rápido, simula aluno
 }
 DEFAULT_SUMMARY_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
-UNANIMITY_TOKEN = "[UNANIMIDADE]"
+
+# =============================================================================
+# 6. CONSTANTES
+# =============================================================================
+APPROVAL_MARKER       = "DECISION: APPROVE"
+REWRITE_MARKER        = "DECISION: REWRITE"
+REWRITE_BLOCK_MARKER  = "--- REWRITTEN TEST ---"
+LEGACY_APPROVAL_TOKEN = "[UNANIMIDADE]"  # backward-compat
+COVERAGE_OK_MARKER    = "COVERAGE_OK"
+
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 MAX_CHARS_PER_SUMMARY_CHUNK = 60_000
 MAX_CHARS_FOR_EVAL_INPUT    = 120_000
+MAX_CHARS_FOR_COVERAGE      = 80_000
 HARD_TRUNCATE_MARGIN        = 200
 
 
 # =============================================================================
-# 5. INTERNACIONALIZAÇÃO (i18n) — UI + output dos LLMs
+# 7. INTERNACIONALIZAÇÃO (i18n)
 # =============================================================================
 LANGUAGES: Dict[str, Dict[str, str]] = {
-    "pt": {"label": "🇵🇹 Português",     "llm_name": "Português Europeu (PT-PT)"},
-    "en": {"label": "🇬🇧 English",        "llm_name": "English"},
-    "es": {"label": "🇪🇸 Español",        "llm_name": "Español"},
-    "fr": {"label": "🇫🇷 Français",       "llm_name": "français"},
-    "de": {"label": "🇩🇪 Deutsch",        "llm_name": "Deutsch"},
+    "pt": {"label": "🇵🇹 Português",  "llm_name": "Português Europeu (PT-PT)"},
+    "en": {"label": "🇬🇧 English",     "llm_name": "English"},
+    "es": {"label": "🇪🇸 Español",     "llm_name": "Español"},
+    "fr": {"label": "🇫🇷 Français",    "llm_name": "français"},
+    "de": {"label": "🇩🇪 Deutsch",     "llm_name": "Deutsch"},
 }
 
-# Etiquetas das 5 secções, traduzidas por idioma — para o LLM usar nos resumos
 SECTION_LABELS_BY_LANG: Dict[str, Dict[str, str]] = {
-    "pt": {"foco": "🎯 Foco Principal",      "conceitos": "🧠 Conceitos-Chave",        "formulas": "🧮 Fórmulas e Metodologias", "aplicacao": "🏭 Aplicação Prática",   "dica": "🎓 Dica do Catedrático"},
-    "en": {"foco": "🎯 Main Focus",          "conceitos": "🧠 Key Concepts",           "formulas": "🧮 Formulas and Methodologies", "aplicacao": "🏭 Practical Application", "dica": "🎓 Professor's Tip"},
-    "es": {"foco": "🎯 Enfoque Principal",   "conceitos": "🧠 Conceptos Clave",        "formulas": "🧮 Fórmulas y Metodologías", "aplicacao": "🏭 Aplicación Práctica", "dica": "🎓 Consejo del Catedrático"},
-    "fr": {"foco": "🎯 Focus Principal",     "conceitos": "🧠 Concepts Clés",          "formulas": "🧮 Formules et Méthodologies", "aplicacao": "🏭 Application Pratique", "dica": "🎓 Conseil du Professeur"},
-    "de": {"foco": "🎯 Hauptfokus",          "conceitos": "🧠 Schlüsselkonzepte",      "formulas": "🧮 Formeln und Methoden",     "aplicacao": "🏭 Praktische Anwendung", "dica": "🎓 Professorentipp"},
+    "pt": {"foco": "🎯 Foco Principal",     "conceitos": "🧠 Conceitos-Chave",      "formulas": "🧮 Fórmulas/Metodologias", "aplicacao": "🏭 Aplicação Prática",     "dica": "🎓 Dica do Professor",        "cobertura": "📋 Cobertura"},
+    "en": {"foco": "🎯 Main Focus",         "conceitos": "🧠 Key Concepts",         "formulas": "🧮 Formulas/Methodologies", "aplicacao": "🏭 Practical Application", "dica": "🎓 Professor's Tip",         "cobertura": "📋 Coverage"},
+    "es": {"foco": "🎯 Enfoque Principal",  "conceitos": "🧠 Conceptos Clave",      "formulas": "🧮 Fórmulas/Metodologías", "aplicacao": "🏭 Aplicación Práctica",   "dica": "🎓 Consejo del Profesor",     "cobertura": "📋 Cobertura"},
+    "fr": {"foco": "🎯 Focus Principal",    "conceitos": "🧠 Concepts Clés",        "formulas": "🧮 Formules/Méthodologies", "aplicacao": "🏭 Application Pratique",  "dica": "🎓 Conseil du Professeur",    "cobertura": "📋 Couverture"},
+    "de": {"foco": "🎯 Hauptfokus",         "conceitos": "🧠 Schlüsselkonzepte",    "formulas": "🧮 Formeln/Methoden",       "aplicacao": "🏭 Praktische Anwendung",  "dica": "🎓 Professorentipp",          "cobertura": "📋 Abdeckung"},
 }
 
-# Strings da UI por idioma
+AGENT_DISPLAY_NAMES: Dict[str, Dict[str, str]] = {
+    "pt": {"Chefe": "Chefe Redator",   "Verificador Técnico": "Verificador Técnico",    "Verificador Pedagógico": "Verificador Pedagógico", "Aluno Crítico": "Aluno Crítico"},
+    "en": {"Chefe": "Lead Writer",      "Verificador Técnico": "Technical Reviewer",    "Verificador Pedagógico": "Pedagogical Reviewer",   "Aluno Crítico": "Critical Student"},
+    "es": {"Chefe": "Redactor Principal","Verificador Técnico": "Revisor Técnico",      "Verificador Pedagógico": "Revisor Pedagógico",     "Aluno Crítico": "Estudiante Crítico"},
+    "fr": {"Chefe": "Rédacteur Principal","Verificador Técnico": "Vérificateur Technique","Verificador Pedagógico": "Vérificateur Pédagogique","Aluno Crítico": "Étudiant Critique"},
+    "de": {"Chefe": "Chefredakteur",     "Verificador Técnico": "Technischer Prüfer",    "Verificador Pedagógico": "Pädagogischer Prüfer",   "Aluno Crítico": "Kritischer Student"},
+}
+
+AGENT_ROLE_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
+    "pt": {"Chefe": "Cria o draft inicial",            "Verificador Técnico": "Cálculos, fórmulas, factos",          "Verificador Pedagógico": "Clareza e didáctica",           "Aluno Crítico": "Perspectiva do utilizador"},
+    "en": {"Chefe": "Drafts the initial version",      "Verificador Técnico": "Calculations, formulas, facts",       "Verificador Pedagógico": "Clarity & teaching quality",    "Aluno Crítico": "End-user perspective"},
+    "es": {"Chefe": "Crea el borrador inicial",        "Verificador Técnico": "Cálculos, fórmulas, hechos",          "Verificador Pedagógico": "Claridad y didáctica",          "Aluno Crítico": "Perspectiva del usuario"},
+    "fr": {"Chefe": "Crée le brouillon initial",       "Verificador Técnico": "Calculs, formules, faits",            "Verificador Pedagógico": "Clarté et didactique",          "Aluno Crítico": "Perspective de l'utilisateur"},
+    "de": {"Chefe": "Erstellt den Erstentwurf",        "Verificador Técnico": "Berechnungen, Formeln, Fakten",       "Verificador Pedagógico": "Klarheit & Didaktik",           "Aluno Crítico": "Perspektive des Nutzers"},
+}
+
 I18N: Dict[str, Dict[str, str]] = {
     "pt": {
-        "app_title": "Análise de Custos",
-        "subtitle": "Plataforma de Estudo Interativa · Instituto Superior de Engenharia de Lisboa",
+        "app_title": "Plataforma Universitária de Estudo",
+        "subtitle": "Resume qualquer PDF académico em qualquer língua · Avaliação por debate multi-agente",
+        "badge_universal": "🎓 Qualquer disciplina",
+        "badge_multilang": "🌐 5 idiomas",
+        "badge_coverage": "📋 Cobertura total",
+        "badge_4agents": "🤖 4 agentes",
         "language": "Idioma da interface",
         "language_help": "Os resumos e a avaliação serão produzidos NESTE idioma, qualquer que seja a língua dos PDFs.",
         "config": "⚙️ Configurações",
         "api_key": "🔑 NVIDIA API Key",
         "api_key_help": "Obrigatória para resumos automáticos e avaliação.",
         "max_rounds": "🔁 Máximo de rondas (avaliação)",
-        "summary_model_label": "🧠 Modelo do Catedrático (resumos)",
-        "debate_models_label": "🤖 Modelos do debate (avaliação)",
+        "summary_model_label": "🧠 Modelo do Professor (resumos)",
+        "debate_models_label": "🤖 Modelos do debate (4 agentes)",
+        "coverage_check_label": "🔍 Verificação de cobertura (PDFs grandes)",
+        "coverage_check_help": "Após resumir PDFs multi-chunk, verifica se algum tópico ficou de fora e completa o resumo. Adiciona ~1-2 chamadas extra ao LLM.",
         "model_404_hint": "Erro 404? Muda aqui para um modelo a que a tua conta tenha acesso.",
         "custom_model_input": "Insere o ID exato do modelo NVIDIA NIM",
         "reset_models": "↺ Repor defaults",
         "key_loaded": "🔒 Chave carregada — IA ativa",
         "no_key": "Sem chave — IA inativa.",
         "upload_pdfs": "📁 Carregar PDFs",
-        "upload_help": "Cada PDF é automaticamente resumido pelo Catedrático ao ser carregado.",
+        "upload_help": "Cada PDF é automaticamente resumido ao ser carregado, no idioma da interface.",
         "pdfs_loaded": "✅ {n} PDF(s) em memória",
         "total_meta": "📄 {pages} páginas · {chars:,} caracteres no total",
         "ai_section": "🤖 IA Multi-Agente",
@@ -363,12 +431,12 @@ I18N: Dict[str, Dict[str, str]] = {
         "welcome_title": "👋 Bem-vindo",
         "welcome_body": "Carrega os teus PDFs na barra lateral. A plataforma irá automaticamente:",
         "welcome_b1": "⛏️ Extrair o texto de cada PDF (via PyMuPDF)",
-        "welcome_b2": "🧠 Pedir ao **Catedrático** que gere um resumo académico estruturado no idioma escolhido",
+        "welcome_b2": "🧠 Pedir ao **Professor** que gere um resumo académico estruturado no idioma escolhido",
         "welcome_b3": "📚 Abrir uma **tab por PDF** com o resumo completo em scroll",
-        "welcome_b4": "🎓 Disponibilizar uma **avaliação interativa** com debate multi-agente",
+        "welcome_b4": "🎓 Disponibilizar uma **avaliação interativa** com debate entre 4 agentes especializados",
         "tab_eval": "🎓 Avaliação Interativa",
         "eval_title": "🎓 Avaliação Interativa",
-        "eval_caption": "Os três agentes debatem em loop circular estrito até que os dois não-autores aprovem unanimemente o teste (ou se atinja o limite de rondas).",
+        "eval_caption": "Os 4 agentes debatem em loop circular: o autor escreve, os outros 3 validam. Cada validador começa com `DECISION: APPROVE/REWRITE` (rápido e assertivo). Consenso = aprovação unânime dos 3 não-autores.",
         "eval_select_pdfs": "📚 PDFs a incluir na avaliação",
         "eval_select_q": "Que PDFs queres incluir?",
         "eval_select_all": "✅ Selecionar todos",
@@ -405,19 +473,30 @@ I18N: Dict[str, Dict[str, str]] = {
         "regen_progress": "🔄 A refazer o resumo de **{name}**",
         "regen_done": "✅ Resumo de `{name}` refeito!",
         "regen_fail": "❌ Falha ao refazer resumo.",
+        "checking_coverage": "🔍 A verificar cobertura do resumo…",
+        "coverage_ok": "✅ Cobertura completa.",
+        "coverage_gaps": "🩹 Detetadas lacunas — a expandir o resumo…",
+        "coverage_expanded": "✨ Resumo expandido com tópicos em falta.",
         "material_too_big": "📏 Matéria muito extensa ({orig:,} chars). Truncada para {trunc:,} chars.",
         "round_of": "🔄 Ronda {i} de {n} · V{v} (autoria: {a})",
-        "approved": "✅ **{v}** aprovou ({tok})",
-        "rewrote": "✏️ **{v}** reescreveu — nova V{n}. Próxima ronda: validadores são os outros 2.",
-        "consensus_msg": "🎉 Consenso atingido na ronda {i}! V{v} de {a} aprovada por {others}.",
+        "approved": "✅ **{v}** aprovou",
+        "rewrote": "✏️ **{v}** reescreveu — nova V{n}. Próxima ronda: 3 outros validam.",
+        "consensus_msg": "🎉 Consenso atingido na ronda {i}! V{v} de {a} aprovada por: {others}.",
         "no_consensus_msg": "⏱️ Limite de {n} rondas atingido. Versão final: V{v} (autoria de {a}).",
-        "chefe_drafting": "👑 **Chefe** a criar V1 do Teste",
+        "chefe_drafting": "👑 **Chefe Redator** a criar V1 do Teste",
         "validator_evaluating": "{icon} **{v}** a avaliar V{n} de **{a}**",
         "elapsed": "decorridos",
+        "remaining": "restantes",
+        "over_estimate": "+ além da estimativa",
+        "model_speed": "velocidade",
     },
     "en": {
-        "app_title": "Cost Analysis",
-        "subtitle": "Interactive Study Platform · Lisbon School of Engineering (ISEL)",
+        "app_title": "University Study Platform",
+        "subtitle": "Summarise any academic PDF in any language · Multi-agent peer review",
+        "badge_universal": "🎓 Any discipline",
+        "badge_multilang": "🌐 5 languages",
+        "badge_coverage": "📋 Full coverage",
+        "badge_4agents": "🤖 4 agents",
         "language": "Interface language",
         "language_help": "Summaries and evaluations will be produced in THIS language, regardless of the source PDFs' language.",
         "config": "⚙️ Settings",
@@ -425,14 +504,16 @@ I18N: Dict[str, Dict[str, str]] = {
         "api_key_help": "Required for automatic summaries and evaluation.",
         "max_rounds": "🔁 Maximum debate rounds",
         "summary_model_label": "🧠 Professor's model (summaries)",
-        "debate_models_label": "🤖 Debate models (evaluation)",
+        "debate_models_label": "🤖 Debate models (4 agents)",
+        "coverage_check_label": "🔍 Coverage check (large PDFs)",
+        "coverage_check_help": "After summarising multi-chunk PDFs, verifies if any topic was missed and completes the summary. Adds ~1-2 extra LLM calls.",
         "model_404_hint": "404 error? Pick a model your account can access.",
         "custom_model_input": "Enter the exact NVIDIA NIM model ID",
         "reset_models": "↺ Reset defaults",
         "key_loaded": "🔒 Key loaded — AI active",
         "no_key": "No key — AI disabled.",
         "upload_pdfs": "📁 Upload PDFs",
-        "upload_help": "Each PDF is automatically summarised by the Professor on upload.",
+        "upload_help": "Each PDF is automatically summarised on upload, in the UI language.",
         "pdfs_loaded": "✅ {n} PDF(s) in memory",
         "total_meta": "📄 {pages} pages · {chars:,} characters total",
         "ai_section": "🤖 Multi-Agent AI",
@@ -449,10 +530,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "welcome_b1": "⛏️ Extract text from each PDF (via PyMuPDF)",
         "welcome_b2": "🧠 Ask the **Professor** to generate a structured academic summary in the chosen language",
         "welcome_b3": "📚 Open one **tab per PDF** with the full summary scrolling",
-        "welcome_b4": "🎓 Provide an **interactive evaluation** with multi-agent debate",
+        "welcome_b4": "🎓 Provide an **interactive evaluation** with debate between 4 specialised agents",
         "tab_eval": "🎓 Interactive Evaluation",
         "eval_title": "🎓 Interactive Evaluation",
-        "eval_caption": "The three agents debate in a strict circular loop until the two non-authors unanimously approve the test (or the round limit is reached).",
+        "eval_caption": "The 4 agents debate in a circular loop: author writes, the other 3 validate. Each validator starts with `DECISION: APPROVE/REWRITE` (fast and assertive). Consensus = unanimous approval of the 3 non-authors.",
         "eval_select_pdfs": "📚 PDFs to include in the evaluation",
         "eval_select_q": "Which PDFs should be included?",
         "eval_select_all": "✅ Select all",
@@ -489,27 +570,40 @@ I18N: Dict[str, Dict[str, str]] = {
         "regen_progress": "🔄 Regenerating summary of **{name}**",
         "regen_done": "✅ Summary of `{name}` regenerated!",
         "regen_fail": "❌ Failed to regenerate summary.",
+        "checking_coverage": "🔍 Verifying summary coverage…",
+        "coverage_ok": "✅ Full coverage.",
+        "coverage_gaps": "🩹 Gaps detected — expanding summary…",
+        "coverage_expanded": "✨ Summary expanded with missing topics.",
         "material_too_big": "📏 Material very large ({orig:,} chars). Truncated to {trunc:,} chars.",
         "round_of": "🔄 Round {i} of {n} · V{v} (author: {a})",
-        "approved": "✅ **{v}** approved ({tok})",
-        "rewrote": "✏️ **{v}** rewrote — new V{n}. Next round: validators are the other 2.",
-        "consensus_msg": "🎉 Consensus reached in round {i}! V{v} by {a} approved by {others}.",
+        "approved": "✅ **{v}** approved",
+        "rewrote": "✏️ **{v}** rewrote — new V{n}. Next round: 3 others validate.",
+        "consensus_msg": "🎉 Consensus reached in round {i}! V{v} by {a} approved by: {others}.",
         "no_consensus_msg": "⏱️ Round limit ({n}) reached. Final version: V{v} (by {a}).",
-        "chefe_drafting": "👑 **Chefe** drafting V1 of the test",
+        "chefe_drafting": "👑 **Lead Writer** drafting V1 of the test",
         "validator_evaluating": "{icon} **{v}** evaluating V{n} by **{a}**",
         "elapsed": "elapsed",
+        "remaining": "remaining",
+        "over_estimate": "over estimate",
+        "model_speed": "speed",
     },
     "es": {
-        "app_title": "Análisis de Costes",
-        "subtitle": "Plataforma de Estudio Interactiva · ISEL Lisboa",
+        "app_title": "Plataforma Universitaria de Estudio",
+        "subtitle": "Resume cualquier PDF académico en cualquier idioma · Evaluación por debate multi-agente",
+        "badge_universal": "🎓 Cualquier disciplina",
+        "badge_multilang": "🌐 5 idiomas",
+        "badge_coverage": "📋 Cobertura total",
+        "badge_4agents": "🤖 4 agentes",
         "language": "Idioma de la interfaz",
         "language_help": "Los resúmenes y la evaluación se producirán en ESTE idioma, sea cual sea el idioma de los PDFs.",
         "config": "⚙️ Configuración",
         "api_key": "🔑 NVIDIA API Key",
         "api_key_help": "Necesaria para resúmenes automáticos y evaluación.",
         "max_rounds": "🔁 Máximo de rondas (evaluación)",
-        "summary_model_label": "🧠 Modelo del Catedrático (resúmenes)",
-        "debate_models_label": "🤖 Modelos del debate (evaluación)",
+        "summary_model_label": "🧠 Modelo del Profesor (resúmenes)",
+        "debate_models_label": "🤖 Modelos del debate (4 agentes)",
+        "coverage_check_label": "🔍 Verificación de cobertura (PDFs grandes)",
+        "coverage_check_help": "Tras resumir PDFs multi-bloque, verifica si algún tema quedó fuera y completa el resumen.",
         "model_404_hint": "¿Error 404? Cambia aquí por un modelo al que tu cuenta tenga acceso.",
         "custom_model_input": "Introduce el ID exacto del modelo NVIDIA NIM",
         "reset_models": "↺ Restaurar por defecto",
@@ -531,12 +625,12 @@ I18N: Dict[str, Dict[str, str]] = {
         "welcome_title": "👋 Bienvenido",
         "welcome_body": "Carga tus PDFs en la barra lateral. La plataforma automáticamente:",
         "welcome_b1": "⛏️ Extraerá el texto de cada PDF (vía PyMuPDF)",
-        "welcome_b2": "🧠 Pedirá al **Catedrático** que genere un resumen académico estructurado en el idioma elegido",
-        "welcome_b3": "📚 Abrirá una **pestaña por PDF** con el resumen completo en scroll",
-        "welcome_b4": "🎓 Ofrecerá una **evaluación interactiva** con debate multi-agente",
+        "welcome_b2": "🧠 Pedirá al **Profesor** que genere un resumen académico estructurado",
+        "welcome_b3": "📚 Abrirá una **pestaña por PDF** con el resumen completo",
+        "welcome_b4": "🎓 Ofrecerá una **evaluación interactiva** con debate entre 4 agentes especializados",
         "tab_eval": "🎓 Evaluación Interactiva",
         "eval_title": "🎓 Evaluación Interactiva",
-        "eval_caption": "Los tres agentes debaten en bucle circular estricto hasta que los dos no-autores aprueben unánimemente el test (o se alcance el límite de rondas).",
+        "eval_caption": "Los 4 agentes debaten en bucle circular: el autor escribe, los otros 3 validan. Consenso = aprobación unánime.",
         "eval_select_pdfs": "📚 PDFs a incluir en la evaluación",
         "eval_select_q": "¿Qué PDFs incluir?",
         "eval_select_all": "✅ Seleccionar todos",
@@ -566,41 +660,54 @@ I18N: Dict[str, Dict[str, str]] = {
         "extracted": "📑 {pages} páginas · {chars:,} caracteres extraídos.",
         "empty_pdf_warn": "⚠️ `{name}` — texto vacío (¿escaneado sin OCR?).",
         "summarizing": "📝 Resumiendo `{name}` ({chars:,} chars)…",
-        "big_pdf_split": "📚 `{name}` es grande — dividido en **{n} bloques** para evitar el límite de contexto.",
+        "big_pdf_split": "📚 `{name}` es grande — dividido en **{n} bloques**.",
         "chunk_progress": "🧠 Bloque {i}/{n} ({chars:,} chars)",
         "summary_done": "✅ ¡`{name}` resumido con éxito!",
         "summary_fail": "❌ Fallo al procesar `{name}`.",
         "regen_progress": "🔄 Rehaciendo el resumen de **{name}**",
-        "regen_done": "✅ ¡Resumen de `{name}` rehecho!",
-        "regen_fail": "❌ Fallo al rehacer el resumen.",
+        "regen_done": "✅ ¡Resumen rehecho!",
+        "regen_fail": "❌ Fallo al rehacer.",
+        "checking_coverage": "🔍 Verificando cobertura del resumen…",
+        "coverage_ok": "✅ Cobertura completa.",
+        "coverage_gaps": "🩹 Lagunas detectadas — expandiendo el resumen…",
+        "coverage_expanded": "✨ Resumen expandido con temas faltantes.",
         "material_too_big": "📏 Material muy extenso ({orig:,} chars). Truncado a {trunc:,} chars.",
         "round_of": "🔄 Ronda {i} de {n} · V{v} (autor: {a})",
-        "approved": "✅ **{v}** aprobó ({tok})",
-        "rewrote": "✏️ **{v}** reescribió — nueva V{n}. Próxima ronda: validadores son los otros 2.",
-        "consensus_msg": "🎉 ¡Consenso alcanzado en la ronda {i}! V{v} de {a} aprobada por {others}.",
+        "approved": "✅ **{v}** aprobó",
+        "rewrote": "✏️ **{v}** reescribió — nueva V{n}. Próxima ronda: 3 validan.",
+        "consensus_msg": "🎉 ¡Consenso alcanzado en la ronda {i}! V{v} de {a} aprobada por: {others}.",
         "no_consensus_msg": "⏱️ Límite de {n} rondas alcanzado. Versión final: V{v} (de {a}).",
-        "chefe_drafting": "👑 **Chefe** redactando V1 del test",
+        "chefe_drafting": "👑 **Redactor Principal** redactando V1",
         "validator_evaluating": "{icon} **{v}** evaluando V{n} de **{a}**",
         "elapsed": "transcurridos",
+        "remaining": "restantes",
+        "over_estimate": "por encima de la estimación",
+        "model_speed": "velocidad",
     },
     "fr": {
-        "app_title": "Analyse de Coûts",
-        "subtitle": "Plateforme d'Étude Interactive · ISEL Lisbonne",
+        "app_title": "Plateforme Universitaire d'Étude",
+        "subtitle": "Résume tout PDF académique dans n'importe quelle langue · Évaluation par débat multi-agent",
+        "badge_universal": "🎓 Toute discipline",
+        "badge_multilang": "🌐 5 langues",
+        "badge_coverage": "📋 Couverture totale",
+        "badge_4agents": "🤖 4 agents",
         "language": "Langue de l'interface",
-        "language_help": "Les résumés et l'évaluation seront produits dans CETTE langue, quelle que soit la langue des PDFs.",
+        "language_help": "Les résumés et l'évaluation seront produits dans CETTE langue.",
         "config": "⚙️ Paramètres",
         "api_key": "🔑 NVIDIA API Key",
         "api_key_help": "Requise pour les résumés automatiques et l'évaluation.",
         "max_rounds": "🔁 Tours maximum (évaluation)",
         "summary_model_label": "🧠 Modèle du Professeur (résumés)",
-        "debate_models_label": "🤖 Modèles du débat (évaluation)",
+        "debate_models_label": "🤖 Modèles du débat (4 agents)",
+        "coverage_check_label": "🔍 Vérification de couverture (gros PDFs)",
+        "coverage_check_help": "Après avoir résumé les PDFs multi-blocs, vérifie qu'aucun sujet n'a été oublié.",
         "model_404_hint": "Erreur 404 ? Choisis un modèle accessible à ton compte.",
         "custom_model_input": "Saisis l'ID exact du modèle NVIDIA NIM",
         "reset_models": "↺ Réinitialiser",
         "key_loaded": "🔒 Clé chargée — IA active",
         "no_key": "Pas de clé — IA inactive.",
         "upload_pdfs": "📁 Charger des PDFs",
-        "upload_help": "Chaque PDF est automatiquement résumé par le Professeur au chargement.",
+        "upload_help": "Chaque PDF est automatiquement résumé au chargement.",
         "pdfs_loaded": "✅ {n} PDF(s) en mémoire",
         "total_meta": "📄 {pages} pages · {chars:,} caractères au total",
         "ai_section": "🤖 IA Multi-Agent",
@@ -614,13 +721,13 @@ I18N: Dict[str, Dict[str, str]] = {
         "db_empty": "(aucun PDF chargé)",
         "welcome_title": "👋 Bienvenue",
         "welcome_body": "Charge tes PDFs dans la barre latérale. La plateforme va automatiquement :",
-        "welcome_b1": "⛏️ Extraire le texte de chaque PDF (via PyMuPDF)",
-        "welcome_b2": "🧠 Demander au **Professeur** un résumé académique structuré dans la langue choisie",
-        "welcome_b3": "📚 Ouvrir un **onglet par PDF** avec le résumé complet en scroll",
-        "welcome_b4": "🎓 Fournir une **évaluation interactive** avec débat multi-agent",
+        "welcome_b1": "⛏️ Extraire le texte de chaque PDF",
+        "welcome_b2": "🧠 Demander au **Professeur** un résumé structuré",
+        "welcome_b3": "📚 Ouvrir un **onglet par PDF**",
+        "welcome_b4": "🎓 Fournir une **évaluation interactive** avec 4 agents spécialisés",
         "tab_eval": "🎓 Évaluation Interactive",
         "eval_title": "🎓 Évaluation Interactive",
-        "eval_caption": "Les trois agents débattent en boucle circulaire stricte jusqu'à approbation unanime des deux non-auteurs (ou atteinte de la limite).",
+        "eval_caption": "Les 4 agents débattent en boucle circulaire : l'auteur écrit, les 3 autres valident. Consensus = unanimité.",
         "eval_select_pdfs": "📚 PDFs à inclure dans l'évaluation",
         "eval_select_q": "Quels PDFs inclure ?",
         "eval_select_all": "✅ Tout sélectionner",
@@ -644,9 +751,9 @@ I18N: Dict[str, Dict[str, str]] = {
         "summary_auto": "🤖 Résumé généré automatiquement",
         "summary_pending": "📝 Résumé en attente",
         "pages_chars": "📑 <b>{pages}</b> pages · {chars:,} caractères extraits · {badge}",
-        "no_summary_yet": "Ce PDF n'a pas encore de résumé. Clique sur **🔄 Refaire le résumé**.",
+        "no_summary_yet": "Ce PDF n'a pas encore de résumé.",
         "processing": "📄 Traitement de **{name}**",
-        "extracting": "⛏️ Extraction du texte du PDF (PyMuPDF)…",
+        "extracting": "⛏️ Extraction du texte (PyMuPDF)…",
         "extracted": "📑 {pages} pages · {chars:,} caractères extraits.",
         "empty_pdf_warn": "⚠️ `{name}` — texte vide (scan sans OCR ?).",
         "summarizing": "📝 Résumé de `{name}` ({chars:,} chars)…",
@@ -655,56 +762,69 @@ I18N: Dict[str, Dict[str, str]] = {
         "summary_done": "✅ `{name}` résumé avec succès !",
         "summary_fail": "❌ Échec du traitement de `{name}`.",
         "regen_progress": "🔄 Régénération du résumé de **{name}**",
-        "regen_done": "✅ Résumé de `{name}` régénéré !",
-        "regen_fail": "❌ Échec de la régénération.",
-        "material_too_big": "📏 Matériel très volumineux ({orig:,} chars). Tronqué à {trunc:,} chars.",
-        "round_of": "🔄 Tour {i} sur {n} · V{v} (auteur : {a})",
-        "approved": "✅ **{v}** a approuvé ({tok})",
-        "rewrote": "✏️ **{v}** a réécrit — nouvelle V{n}. Tour suivant : les 2 autres valident.",
-        "consensus_msg": "🎉 Consensus au tour {i} ! V{v} de {a} approuvée par {others}.",
+        "regen_done": "✅ Résumé régénéré !",
+        "regen_fail": "❌ Échec.",
+        "checking_coverage": "🔍 Vérification de la couverture…",
+        "coverage_ok": "✅ Couverture complète.",
+        "coverage_gaps": "🩹 Lacunes détectées — extension du résumé…",
+        "coverage_expanded": "✨ Résumé étendu avec les sujets manquants.",
+        "material_too_big": "📏 Matériel très volumineux ({orig:,} chars). Tronqué à {trunc:,}.",
+        "round_of": "🔄 Tour {i}/{n} · V{v} (auteur : {a})",
+        "approved": "✅ **{v}** a approuvé",
+        "rewrote": "✏️ **{v}** a réécrit — V{n}. Tour suivant : 3 valident.",
+        "consensus_msg": "🎉 Consensus au tour {i} ! V{v} de {a} approuvée par : {others}.",
         "no_consensus_msg": "⏱️ Limite de {n} tours atteinte. Version finale : V{v} (de {a}).",
-        "chefe_drafting": "👑 **Chefe** rédige la V1 du test",
-        "validator_evaluating": "{icon} **{v}** évalue la V{n} de **{a}**",
+        "chefe_drafting": "👑 **Rédacteur Principal** rédige V1",
+        "validator_evaluating": "{icon} **{v}** évalue V{n} de **{a}**",
         "elapsed": "écoulées",
+        "remaining": "restantes",
+        "over_estimate": "au-delà de l'estimation",
+        "model_speed": "vitesse",
     },
     "de": {
-        "app_title": "Kostenanalyse",
-        "subtitle": "Interaktive Lernplattform · ISEL Lissabon",
+        "app_title": "Universitäre Lernplattform",
+        "subtitle": "Fasse jedes akademische PDF in jeder Sprache zusammen · Multi-Agenten-Bewertung",
+        "badge_universal": "🎓 Jede Disziplin",
+        "badge_multilang": "🌐 5 Sprachen",
+        "badge_coverage": "📋 Volle Abdeckung",
+        "badge_4agents": "🤖 4 Agenten",
         "language": "Oberflächensprache",
-        "language_help": "Zusammenfassungen und Bewertung werden IN DIESER Sprache erzeugt, unabhängig von der PDF-Sprache.",
+        "language_help": "Zusammenfassungen und Bewertung werden IN DIESER Sprache erzeugt.",
         "config": "⚙️ Einstellungen",
         "api_key": "🔑 NVIDIA API Key",
         "api_key_help": "Erforderlich für automatische Zusammenfassungen und Bewertung.",
         "max_rounds": "🔁 Maximale Debattenrunden",
         "summary_model_label": "🧠 Professor-Modell (Zusammenfassungen)",
-        "debate_models_label": "🤖 Debattenmodelle (Bewertung)",
-        "model_404_hint": "404-Fehler? Wähle ein Modell, auf das dein Konto Zugriff hat.",
-        "custom_model_input": "Gib die exakte NVIDIA NIM Modell-ID ein",
+        "debate_models_label": "🤖 Debattenmodelle (4 Agenten)",
+        "coverage_check_label": "🔍 Abdeckungsprüfung (große PDFs)",
+        "coverage_check_help": "Nach Multi-Block-Zusammenfassungen prüfen, ob ein Thema fehlt.",
+        "model_404_hint": "404-Fehler? Wähle ein zugängliches Modell.",
+        "custom_model_input": "NVIDIA NIM Modell-ID eingeben",
         "reset_models": "↺ Standards wiederherstellen",
         "key_loaded": "🔒 Schlüssel geladen — KI aktiv",
         "no_key": "Kein Schlüssel — KI inaktiv.",
         "upload_pdfs": "📁 PDFs hochladen",
         "upload_help": "Jedes PDF wird beim Hochladen automatisch zusammengefasst.",
         "pdfs_loaded": "✅ {n} PDF(s) im Speicher",
-        "total_meta": "📄 {pages} Seiten · {chars:,} Zeichen insgesamt",
+        "total_meta": "📄 {pages} Seiten · {chars:,} Zeichen",
         "ai_section": "🤖 Multi-Agenten-KI",
         "ai_pill_eval": "🎓 Interaktive Bewertung",
         "ai_pill_help": "Tab immer verfügbar.",
         "db_section": "🗑️ Datenbank",
         "db_confirm": "ALLES LÖSCHEN bestätigen",
-        "db_confirm_help": "Aktivieren, um den Button freizugeben.",
-        "db_delete_btn": "🗑️ Zusammenfassungs-Datenbank löschen",
+        "db_confirm_help": "Aktivieren um Button freizugeben.",
+        "db_delete_btn": "🗑️ Zusammenfassungs-DB löschen",
         "db_deleted": "Datenbank gelöscht.",
         "db_empty": "(keine PDFs geladen)",
         "welcome_title": "👋 Willkommen",
         "welcome_body": "Lade deine PDFs in der Seitenleiste. Die Plattform wird automatisch:",
-        "welcome_b1": "⛏️ Text aus jedem PDF extrahieren (via PyMuPDF)",
-        "welcome_b2": "🧠 Den **Professor** bitten, eine strukturierte akademische Zusammenfassung in der gewählten Sprache zu erstellen",
-        "welcome_b3": "📚 Pro PDF einen **Tab** mit voller Zusammenfassung öffnen",
-        "welcome_b4": "🎓 Eine **interaktive Bewertung** mit Multi-Agenten-Debatte bereitstellen",
+        "welcome_b1": "⛏️ Text aus jedem PDF extrahieren",
+        "welcome_b2": "🧠 Den **Professor** um eine strukturierte Zusammenfassung bitten",
+        "welcome_b3": "📚 Pro PDF einen **Tab** öffnen",
+        "welcome_b4": "🎓 Eine **interaktive Bewertung** mit 4 spezialisierten Agenten bereitstellen",
         "tab_eval": "🎓 Interaktive Bewertung",
         "eval_title": "🎓 Interaktive Bewertung",
-        "eval_caption": "Die drei Agenten debattieren in strenger Zirkelschleife, bis die beiden Nicht-Autoren einstimmig zustimmen (oder das Limit erreicht ist).",
+        "eval_caption": "Die 4 Agenten debattieren in Zirkelschleife: Autor schreibt, die anderen 3 validieren. Konsens = Einstimmigkeit.",
         "eval_select_pdfs": "📚 PDFs für die Bewertung",
         "eval_select_q": "Welche PDFs einbeziehen?",
         "eval_select_all": "✅ Alle auswählen",
@@ -714,48 +834,54 @@ I18N: Dict[str, Dict[str, str]] = {
         "btn_clear": "🗑️ Leeren",
         "warn_set_key": "Setze die NVIDIA API Key in **⚙️ Einstellungen**.",
         "warn_pick_pdf": "Wähle mindestens ein PDF oben aus.",
-        "info_limit": "Aktuelles Limit: **{n} Runden** · Ausgewählte PDFs: **{k}**.",
-        "info_start_upload": "📁 Beginne mit dem Hochladen von PDFs in der Seitenleiste.",
+        "info_limit": "Aktuelles Limit: **{n} Runden** · PDFs: **{k}**.",
+        "info_start_upload": "📁 Beginne mit dem Hochladen von PDFs.",
         "debate_in_progress": "🎬 Debatte läuft",
         "consensus_in": "Konsens in {n} Runde(n)",
         "limit_reached": "Rundenlimit ({n}) erreicht",
         "final_version": "Endversion",
         "final_authorship": "Endgültige Autorenschaft",
-        "download_test": "📥 Test als Markdown herunterladen",
+        "download_test": "📥 Test als Markdown",
         "debate_history": "🗂️ Debattenverlauf ({n} Beiträge)",
         "regen_summary": "🔄 Zusammenfassung neu erzeugen",
         "view_raw": "🔍 Extrahierten PDF-Text ansehen (debug)",
-        "summary_auto": "🤖 Automatisch erzeugte Zusammenfassung",
-        "summary_pending": "📝 Zusammenfassung ausstehend",
-        "pages_chars": "📑 <b>{pages}</b> Seiten · {chars:,} Zeichen extrahiert · {badge}",
-        "no_summary_yet": "Dieses PDF hat noch keine Zusammenfassung. Klicke oben auf **🔄 Zusammenfassung neu erzeugen**.",
+        "summary_auto": "🤖 Automatisch erzeugt",
+        "summary_pending": "📝 Ausstehend",
+        "pages_chars": "📑 <b>{pages}</b> Seiten · {chars:,} Zeichen · {badge}",
+        "no_summary_yet": "Dieses PDF hat noch keine Zusammenfassung.",
         "processing": "📄 Verarbeite **{name}**",
         "extracting": "⛏️ Extrahiere PDF-Text (PyMuPDF)…",
         "extracted": "📑 {pages} Seiten · {chars:,} Zeichen extrahiert.",
-        "empty_pdf_warn": "⚠️ `{name}` — leerer Text (Scan ohne OCR?).",
+        "empty_pdf_warn": "⚠️ `{name}` — leerer Text.",
         "summarizing": "📝 Fasse `{name}` zusammen ({chars:,} Zeichen)…",
-        "big_pdf_split": "📚 `{name}` ist groß — in **{n} Blöcke** geteilt.",
+        "big_pdf_split": "📚 `{name}` ist groß — **{n} Blöcke**.",
         "chunk_progress": "🧠 Block {i}/{n} ({chars:,} Zeichen)",
         "summary_done": "✅ `{name}` erfolgreich zusammengefasst!",
-        "summary_fail": "❌ Verarbeitung von `{name}` fehlgeschlagen.",
-        "regen_progress": "🔄 Erzeuge Zusammenfassung von **{name}** neu",
-        "regen_done": "✅ Zusammenfassung von `{name}` neu erzeugt!",
-        "regen_fail": "❌ Neuerzeugung fehlgeschlagen.",
-        "material_too_big": "📏 Material sehr umfangreich ({orig:,} Zeichen). Auf {trunc:,} Zeichen gekürzt.",
-        "round_of": "🔄 Runde {i} von {n} · V{v} (Autor: {a})",
-        "approved": "✅ **{v}** zugestimmt ({tok})",
-        "rewrote": "✏️ **{v}** überschrieben — neue V{n}. Nächste Runde: die anderen 2 validieren.",
-        "consensus_msg": "🎉 Konsens in Runde {i} erreicht! V{v} von {a} zugestimmt durch {others}.",
+        "summary_fail": "❌ Verarbeitung fehlgeschlagen.",
+        "regen_progress": "🔄 Erzeuge Zusammenfassung neu",
+        "regen_done": "✅ Neu erzeugt!",
+        "regen_fail": "❌ Fehlgeschlagen.",
+        "checking_coverage": "🔍 Prüfe Abdeckung…",
+        "coverage_ok": "✅ Vollständige Abdeckung.",
+        "coverage_gaps": "🩹 Lücken erkannt — erweitere Zusammenfassung…",
+        "coverage_expanded": "✨ Zusammenfassung um fehlende Themen erweitert.",
+        "material_too_big": "📏 Material sehr umfangreich ({orig:,}). Gekürzt auf {trunc:,}.",
+        "round_of": "🔄 Runde {i}/{n} · V{v} (Autor: {a})",
+        "approved": "✅ **{v}** zugestimmt",
+        "rewrote": "✏️ **{v}** überschrieben — V{n}. Nächste Runde: 3 validieren.",
+        "consensus_msg": "🎉 Konsens in Runde {i}! V{v} von {a} bestätigt durch: {others}.",
         "no_consensus_msg": "⏱️ Rundenlimit ({n}) erreicht. Endversion: V{v} (von {a}).",
-        "chefe_drafting": "👑 **Chefe** erstellt V1 des Tests",
-        "validator_evaluating": "{icon} **{v}** bewertet V{n} von **{a}**",
+        "chefe_drafting": "👑 **Chefredakteur** erstellt V1",
+        "validator_evaluating": "{icon} **{v}** prüft V{n} von **{a}**",
         "elapsed": "vergangen",
+        "remaining": "übrig",
+        "over_estimate": "über der Schätzung",
+        "model_speed": "Geschwindigkeit",
     },
 }
 
 
 def t(key: str, **kwargs) -> str:
-    """Tradutor: devolve a string i18n no idioma atual, formatada com kwargs."""
     lang = st.session_state.get("ui_language", "pt")
     val = I18N.get(lang, I18N["pt"]).get(key, I18N["pt"].get(key, key))
     try:
@@ -764,111 +890,113 @@ def t(key: str, **kwargs) -> str:
         return val
 
 
+def agent_display(agent_key: str) -> str:
+    """Devolve o nome do agente no idioma da UI."""
+    lang = st.session_state.get("ui_language", "pt")
+    return AGENT_DISPLAY_NAMES.get(lang, AGENT_DISPLAY_NAMES["pt"]).get(agent_key, agent_key)
+
+
+def agent_role_description(agent_key: str) -> str:
+    lang = st.session_state.get("ui_language", "pt")
+    return AGENT_ROLE_DESCRIPTIONS.get(lang, AGENT_ROLE_DESCRIPTIONS["pt"]).get(agent_key, "")
+
+
 def language_instruction(lang_code: str) -> str:
-    """
-    Bloco system que FORÇA o LLM a produzir output no idioma escolhido,
-    independentemente da língua do material fonte.
-    """
     lang_name = LANGUAGES.get(lang_code, LANGUAGES["pt"])["llm_name"]
     return (
         f"### LANGUAGE OVERRIDE\n"
-        f"You MUST produce ALL output in **{lang_name}**, regardless of "
-        f"the language of the source material or any language mentioned in the user prompt. "
+        f"You MUST produce ALL output in **{lang_name}**, regardless of the language of the source material. "
         f"Do not switch languages mid-response. If the source PDF is in another language, "
         f"translate the content into {lang_name} while preserving technical terminology.\n"
     )
 
 
 def section_labels_block(lang_code: str) -> str:
-    """Etiquetas das 5 secções para o LLM, no idioma escolhido."""
     sl = SECTION_LABELS_BY_LANG.get(lang_code, SECTION_LABELS_BY_LANG["pt"])
     return (
-        f"### SECTION HEADERS (use these EXACT labels in {LANGUAGES[lang_code]['llm_name']}):\n"
-        f"- {sl['foco']}\n"
-        f"- {sl['conceitos']}\n"
-        f"- {sl['formulas']}\n"
-        f"- {sl['aplicacao']}\n"
-        f"- {sl['dica']}\n"
+        f"### SECTION HEADERS (use these EXACT labels translated into {LANGUAGES.get(lang_code, LANGUAGES['pt'])['llm_name']}):\n"
+        f"- {sl['foco']}\n- {sl['conceitos']}\n- {sl['formulas']}\n- {sl['aplicacao']}\n- {sl['dica']}\n"
+        f"- Final coverage section: ## {sl['cobertura']}\n"
     )
 
 
 # =============================================================================
-# 6. LOADING — Mensagens divertidas por idioma + GIFs opcionais
+# 8. LOADING — Mensagens divertidas por idioma
 # =============================================================================
 FUNNY_LOADING_MESSAGES_BY_LANG: Dict[str, List[str]] = {
     "pt": [
         "🐱 Os agentes a tomar café antes do debate académico…",
-        "🦉 A coruja-validadora a verificar fórmulas duas vezes…",
+        "🦉 A coruja-verificadora a conferir fórmulas duas vezes…",
         "🦫 Os castores a construir o resumo, parágrafo a parágrafo…",
-        "🐢 Devagar, mas com rigor de catedrático…",
-        "🐶 Agentes a ladrar uns aos outros sobre custos fixos…",
+        "🐢 Devagar, mas com rigor de Professor…",
+        "🐶 Agentes a ladrar uns aos outros sobre definições…",
         "🐧 Pinguins em reunião departamental — temperatura ideal!",
-        "🦊 A raposa-A detetou uma fórmula suspeita na V1…",
+        "🦊 A raposa-técnica detetou um símbolo suspeito numa fórmula…",
         "🐼 Pandas a folhear notas. Devagar, mas certo.",
         "🦘 A saltar entre capítulos à procura do resumo perfeito…",
         "🐙 8 braços a escrever Markdown ao mesmo tempo…",
         "🦦 As lontras a polir as definições com paciência…",
-        "🦝 O guaxinim revisor encontrou outra contradição…",
+        "🦝 O guaxinim crítico encontrou outra ambiguidade…",
     ],
     "en": [
         "🐱 The agents are sipping coffee before the academic debate…",
-        "🦉 The validator owl is double-checking formulas…",
+        "🦉 The reviewer owl is double-checking formulas…",
         "🦫 Beavers are building the summary, paragraph by paragraph…",
         "🐢 Slow, but with professorial rigour…",
-        "🐶 Agents barking at each other about fixed costs…",
+        "🐶 Agents barking at each other about definitions…",
         "🐧 Penguins in a departmental meeting — perfect room temperature!",
-        "🦊 Fox-A spotted a suspicious formula in V1…",
+        "🦊 Technical fox spotted a suspicious symbol in a formula…",
         "🐼 Pandas flipping through notes. Slowly, surely.",
         "🦘 Hopping between chapters in search of the perfect summary…",
         "🐙 Eight arms typing Markdown simultaneously…",
         "🦦 Otters polishing the definitions patiently…",
-        "🦝 The raccoon reviewer found another contradiction…",
+        "🦝 The critical raccoon found another ambiguity…",
     ],
     "es": [
         "🐱 Los agentes tomando café antes del debate académico…",
-        "🦉 La lechuza-validadora verificando fórmulas dos veces…",
+        "🦉 La lechuza-revisora verificando fórmulas dos veces…",
         "🦫 Los castores construyendo el resumen, párrafo a párrafo…",
-        "🐢 Despacio, pero con rigor de catedrático…",
-        "🐶 Agentes ladrando sobre costes fijos…",
+        "🐢 Despacio, pero con rigor de Profesor…",
+        "🐶 Agentes ladrando sobre definiciones…",
         "🐧 Pingüinos en reunión departamental — ¡temperatura ideal!",
-        "🦊 El zorro-A detectó una fórmula sospechosa en la V1…",
-        "🐼 Pandas hojeando apuntes. Lento pero seguro.",
-        "🦘 Saltando entre capítulos en busca del resumen perfecto…",
+        "🦊 El zorro-técnico detectó un símbolo sospechoso…",
+        "🐼 Pandas hojeando apuntes.",
+        "🦘 Saltando entre capítulos…",
         "🐙 8 brazos escribiendo Markdown a la vez…",
+        "🦦 Las nutrias puliendo las definiciones…",
+        "🦝 El mapache crítico encontró otra ambigüedad…",
     ],
     "fr": [
         "🐱 Les agents prennent un café avant le débat académique…",
-        "🦉 La chouette-validatrice vérifie les formules deux fois…",
+        "🦉 La chouette-vérificatrice contrôle les formules deux fois…",
         "🦫 Les castors construisent le résumé, paragraphe par paragraphe…",
-        "🐢 Lentement, mais avec rigueur de professeur…",
-        "🐶 Agents qui aboient sur les coûts fixes…",
+        "🐢 Lentement, mais avec la rigueur d'un Professeur…",
+        "🐶 Agents qui aboient sur les définitions…",
         "🐧 Pingouins en réunion départementale — température idéale !",
-        "🦊 Le renard-A a repéré une formule suspecte dans V1…",
-        "🐼 Pandas qui feuillètent les notes. Lentement mais sûrement.",
-        "🦘 Sauts entre chapitres à la recherche du résumé parfait…",
+        "🦊 Le renard technique a repéré un symbole suspect…",
+        "🐼 Pandas qui feuillètent les notes.",
+        "🦘 Sauts entre chapitres…",
         "🐙 8 bras qui tapent du Markdown en même temps…",
+        "🦦 Loutres qui polissent les définitions…",
+        "🦝 Le raton critique a trouvé une autre ambiguïté…",
     ],
     "de": [
         "🐱 Die Agenten trinken Kaffee vor der akademischen Debatte…",
-        "🦉 Die Validator-Eule prüft die Formeln zweimal…",
+        "🦉 Die Prüfer-Eule kontrolliert die Formeln zweimal…",
         "🦫 Die Biber bauen die Zusammenfassung, Absatz für Absatz…",
         "🐢 Langsam, aber mit professoraler Sorgfalt…",
-        "🐶 Agenten bellen sich über Fixkosten an…",
+        "🐶 Agenten bellen über Definitionen…",
         "🐧 Pinguine in der Abteilungssitzung — perfekte Temperatur!",
-        "🦊 Fuchs-A hat eine verdächtige Formel in V1 entdeckt…",
-        "🐼 Pandas blättern durch Notizen. Langsam, aber sicher.",
-        "🦘 Springt zwischen Kapiteln auf der Suche nach der perfekten Zusammenfassung…",
+        "🦊 Der technische Fuchs hat ein verdächtiges Symbol entdeckt…",
+        "🐼 Pandas blättern durch Notizen.",
+        "🦘 Springt zwischen Kapiteln…",
         "🐙 Acht Arme tippen gleichzeitig Markdown…",
+        "🦦 Otter polieren die Definitionen geduldig…",
+        "🦝 Der kritische Waschbär fand eine weitere Mehrdeutigkeit…",
     ],
 }
 
 LOADING_EMOJIS = ["🧠", "📚", "⚙️", "🔬", "📊", "🎓", "💡", "🔍", "📝", "🏛️"]
-
-# GIFs opcionais — preenche com URLs estáveis (Giphy/Tenor) se quiseres
-# enriquecer o loading visual. Lista vazia → só emoji animado por CSS.
-# Exemplos (verifica antes de usar):
-#   "https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif"
-LOADING_GIF_URLS: List[str] = []
 
 
 def random_fun_message(lang_code: str) -> str:
@@ -877,88 +1005,82 @@ def random_fun_message(lang_code: str) -> str:
 
 
 # =============================================================================
-# 7. LoadingAnimator — UI dinâmica durante streaming
+# 9. LoadingAnimator — UI dinâmica com timer/ETA
 # =============================================================================
 class LoadingAnimator:
     """
-    Anima o loading num `st.container`/`st.status`:
-      • mensagem divertida que troca a cada 15s
-      • emoji grande animado por CSS (bounce + glow)
-      • GIF opcional que troca a cada 30s
-      • contador de tempo decorrido
-      • placeholder separado para o streaming text do LLM
+    Animação de loading que actualiza a UI mesmo sem chunks novos.
+    Renderiza:
+      • emoji grande com bounce + pulse-glow
+      • mensagem divertida (roda a cada 15s)
+      • contador `⏱ Xs decorridos`
+      • ETA `⏳ ~Ys restantes`
+      • barra de progresso visual
+      • placeholder com últimos chunks do LLM streaming
 
-    Usado dentro do callback de streaming — cada chunk chama .update().
+    Usado em conjunto com `stream_call_threaded`: o main thread chama
+    `.update()` em cada iteração do polling-loop (chunks novos ou tick).
     """
-    MSG_ROTATE_SECONDS = 15.0
-    GIF_ROTATE_SECONDS = 30.0
 
-    def __init__(self, container, lang_code: str, total_chunks: Optional[int] = None):
+    MSG_ROTATE_SECONDS = 15.0
+
+    def __init__(self, container, lang_code: str, eta_seconds: Optional[int] = None):
         self.container = container
         self.lang_code = lang_code
-        self.total_chunks = total_chunks
+        self.eta_initial = eta_seconds if eta_seconds and eta_seconds > 0 else None
         self.start_time = time.time()
         self.last_msg_change = 0.0
-        self.last_gif_change = 0.0
         self.last_render = 0.0
         self.current_msg = random_fun_message(lang_code)
         self.current_emoji = random.choice(LOADING_EMOJIS)
-        self.current_gif_idx = 0
-        # Placeholders
         self.animator_slot = container.empty()
         self.text_slot = container.empty()
         self._render(current_text="")
 
     def update(self, current_text: str = "", force: bool = False) -> None:
-        """Chamado dentro do loop de streaming. Throttled a 4 fps."""
+        """Throttled a 2 fps por defeito; force=True para render imediato."""
         now = time.time()
-        # Throttle UI updates (chunks chegam muito rápido)
-        if not force and now - self.last_render < 0.25:
+        if not force and now - self.last_render < 0.5:
             return
         self.last_render = now
-
         elapsed = now - self.start_time
 
-        # Roda a mensagem a cada 15s
         if elapsed - self.last_msg_change >= self.MSG_ROTATE_SECONDS:
             self.current_msg = random_fun_message(self.lang_code)
             self.current_emoji = random.choice(LOADING_EMOJIS)
             self.last_msg_change = elapsed
 
-        # Roda o GIF a cada 30s
-        if LOADING_GIF_URLS and elapsed - self.last_gif_change >= self.GIF_ROTATE_SECONDS:
-            self.current_gif_idx = (self.current_gif_idx + 1) % len(LOADING_GIF_URLS)
-            self.last_gif_change = elapsed
-
         self._render(current_text)
 
     def _render(self, current_text: str) -> None:
-        elapsed = int(time.time() - self.start_time)
-        chars_out = len(current_text)
-        elapsed_word = t("elapsed")
+        elapsed = time.time() - self.start_time
+        chars = len(current_text)
 
-        # Barra de progresso baseada em tempo (visual; aprox 60s = "full")
-        progress_pct = min(100, int((elapsed / 60.0) * 100))
+        # ETA + progress
+        if self.eta_initial:
+            remaining = self.eta_initial - elapsed
+            if remaining > 0:
+                eta_html = f"· <span class='eta'>⏳ ~{int(remaining)}s {t('remaining')}</span>"
+                progress_pct = min(95, int((elapsed / self.eta_initial) * 100))
+            else:
+                over = int(elapsed - self.eta_initial)
+                eta_html = f"· <span class='eta'>⏳ +{over}s {t('over_estimate')}</span>"
+                progress_pct = 95
+        else:
+            eta_html = ""
+            progress_pct = min(95, int((elapsed / 60.0) * 100))
 
-        html_parts = [
-            f"<div class='loading-fun'>",
-            f"  <span class='big-emoji'>{self.current_emoji}</span>",
-            f"  <div class='body'>",
-            f"    <div class='msg'>{self.current_msg}</div>",
-            f"    <div class='meta'>⏱ {elapsed}s {elapsed_word} · 📝 {chars_out:,} chars</div>",
-            f"    <div class='progress-bar'><div class='progress-fill' style='width: {progress_pct}%'></div></div>",
-            f"  </div>",
-            f"</div>",
-        ]
-        self.animator_slot.markdown("".join(html_parts), unsafe_allow_html=True)
+        html = (
+            f"<div class='loading-fun'>"
+            f"<span class='big-emoji'>{self.current_emoji}</span>"
+            f"<div class='body'>"
+            f"<div class='msg'>{self.current_msg}</div>"
+            f"<div class='meta'>⏱ {int(elapsed)}s {t('elapsed')} · 📝 {chars:,} chars {eta_html}</div>"
+            f"<div class='progress-bar'><div class='progress-fill' style='width: {progress_pct}%'></div></div>"
+            f"</div></div>"
+        )
+        self.animator_slot.markdown(html, unsafe_allow_html=True)
 
-        if LOADING_GIF_URLS:
-            try:
-                self.animator_slot.image(LOADING_GIF_URLS[self.current_gif_idx], width=240)
-            except Exception:
-                pass  # graceful degradation
-
-        # Streaming text (últimos 1500 chars)
         if current_text:
             tail = current_text[-1500:]
             self.text_slot.code(tail + "▌", language="markdown")
@@ -968,8 +1090,17 @@ class LoadingAnimator:
         self.text_slot.empty()
 
 
+def estimate_eta(model: str, max_tokens: int) -> int:
+    """Devolve estimativa de segundos para gerar max_tokens com este modelo."""
+    meta = MODEL_REGISTRY.get(model, {})
+    base = meta.get("est_seconds_4k", DEFAULT_SPEED_ESTIMATE_4K)
+    if not isinstance(base, (int, float)) or base <= 0:
+        base = DEFAULT_SPEED_ESTIMATE_4K
+    return max(5, int(base * (max_tokens / 4000.0)))
+
+
 # =============================================================================
-# 8. EXTRAÇÃO E CHUNKING DE PDFs
+# 10. EXTRAÇÃO E CHUNKING DE PDFs
 # =============================================================================
 def extract_pdf_text(pdf_bytes: bytes) -> Dict[str, object]:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -1015,104 +1146,225 @@ def safe_truncate(text: str, max_chars: int) -> str:
 
 
 # =============================================================================
-# 9. PROMPT OFICIAL DO CATEDRÁTICO (resumos)
+# 11. PROMPTS — Resumo + Cobertura
 # =============================================================================
-# Texto entre [INÍCIO/FIM TEXTO PROVIDENCIADO] = fornecido pelo utilizador.
-# A continuação foi completada porque o original estava truncado.
+PROMPT_RESUMO_TEMPLATE = """Atua como Professor Universitário Sénior, especialista em sintetizar matéria académica de QUALQUER disciplina (Engenharia, Ciências, Humanidades, Saúde, Direito, Economia, Artes…).
 
-PROMPT_RESUMO_TEMPLATE = """Atua como um Professor Catedrático e Coordenador de Mestrado com mais de 20 anos de experiência académica e pedagógica. A tua missão é transformar o material de estudo fornecido num Resumo Académico de Alto Nível, ideal para estudantes de pós-graduação que necessitam de profundidade, rigor técnico e clareza conceptual para preparação de exames.
+A tua missão: produzir um Resumo Académico de Alto Nível sobre o material fornecido — completo, estruturado e ideal para preparação de exames universitários.
 
-Adota um tom pedagógico que seja simultaneamente claro, conciso, objetivo e profundamente explicativo. Não te limites a listar definições superficiais; vai ao pormenor, explica o "porquê" e o "como" dos mecanismos e teorias.
+🎯 OBJETIVO CRÍTICO — COBERTURA INTEGRAL:
+Cobre TODOS os tópicos do material. Se há 15 temas, o resumo aborda os 15. Não omitas nada relevante. Se um tema for breve no original, o resumo desse tema pode ser breve, mas DEVE estar lá.
 
-Garante que a estrutura do resumo respeita os seguintes critérios obrigatórios:
+ESTRUTURA POR TEMA (Markdown):
 
-1. ESTRUTURA DOS CAPÍTULOS / BLOCOS TEMÁTICOS:
-Para cada tema ou capítulo identificado no texto, cria uma secção estruturada exatamente com as seguintes marcações em Markdown:
-   * **🎯 Foco Principal:** Uma frase cirúrgica e concisa que resuma o objetivo central ou a utilidade estratégica do capítulo.
-   * **🧠 Conceitos-Chave:** Explicações detalhadas, aprofundadas e pormenorizadas dos termos técnicos e teorias fundamentais. Usa sub-tópicos se necessário para dissecar sub-conceitos.
-   * **🧮 Fórmulas e Metodologias (se aplicável):** Apresenta todas as equações matemáticas, deduções ou frameworks
-# === FIM DO TEXTO PROVIDENCIADO PELO UTILIZADOR ===
-# === CONTINUAÇÃO COERENTE — substitui quando tiveres o prompt completo ===
- relevantes em LaTeX (`$...$` inline e `$$...$$` em display). Acompanha cada fórmula de uma explicação sucinta das variáveis e do contexto em que se aplica.
-   * **🏭 Aplicação Prática:** Um cenário concreto (empresa industrial, decisão de gestão, contexto fabril) que mostre como o conceito é usado no mundo real.
-   * **🎓 Dica do Catedrático:** Uma pista de exame, um erro comum a evitar, ou uma ligação a outro conceito da matéria. Curto e perspicaz.
+#### [Título do tema]
+🎯 **Foco Principal:** uma frase cirúrgica sobre o objetivo central do tema.
+🧠 **Conceitos-Chave:** definições rigorosas e detalhadas. Sub-bullets para sub-conceitos.
+🧮 **Fórmulas/Metodologias:** *(apenas se aplicável — humanidades não terão)* equações em LaTeX (`$...$` inline, `$$...$$` display) + explicação das variáveis.
+🏭 **Aplicação Prática:** exemplo concreto e tangível ao mundo real (caso, situação, problema).
+🎓 **Dica do Professor:** erro comum a evitar, ligação a outro conceito, ou pista de exame.
 
-2. REGRAS DE FORMATAÇÃO:
-   - Cabeçalhos `####` para o título de cada capítulo.
-   - Markdown limpo. Sem preâmbulos, sem despedidas, sem meta-comentários.
-   - Se o texto for um fragmento, resume APENAS o que está presente — não inventes conteúdo.
+NO FIM do resumo, adiciona uma secção `## 📋 Cobertura` com bullets curtos listando TODOS os temas/secções que abordaste. Isto permite verificar visualmente que nada ficou de fora.
 
-NOTA: As etiquetas das 5 secções acima devem ser usadas TRADUZIDAS para o idioma indicado no system prompt (ver SECTION HEADERS).
+REGRAS:
+- Markdown limpo. Sem preâmbulos, sem despedidas, sem meta-comentários.
+- Cabeçalho `####` para cada tema.
+- NÃO inventes conteúdo fora do material.
+- Linguagem técnica é preservada; resto é traduzido conforme system prompt.
+- Usa as etiquetas das 5 secções TRADUZIDAS para o idioma do system prompt (ver SECTION HEADERS).
 
----
-
-MATERIAL DE ESTUDO A RESUMIR:
+MATERIAL DE ESTUDO:
 
 {material}
 """
 
+PROMPT_COVERAGE_CHECK = """Avalia se o resumo cobre todos os TÓPICOS ESTRUTURAIS do material original.
+
+FORMATO DE RESPOSTA OBRIGATÓRIO:
+
+LINHA 1: `{ok_marker}` (se tudo está coberto) OU `GAPS_FOUND` (se faltam tópicos).
+
+Se GAPS_FOUND, a partir da linha 2 lista os tópicos omitidos:
+- [Título do tópico em falta]: 1 frase a descrever, referindo aproximadamente onde aparece no material.
+
+REGRAS:
+- Só assinala omissões ESTRUTURAIS (temas/conceitos inteiros). Detalhes secundários ou exemplos não contam.
+- Sê justo: PDFs longos com 50 temas naturalmente têm resumos densos; não exijas paráfrase exaustiva.
+- Máximo 10 lacunas. Foca nas mais importantes.
+
+MATERIAL ORIGINAL:
+
+{material}
+
+---
+
+RESUMO A AVALIAR:
+
+{summary}
+"""
+
+PROMPT_GAP_FILLING = """O resumo anterior tem lacunas. A tua tarefa: ADICIONAR secções que cubram os tópicos em falta.
+
+Para cada tópico em falta, cria uma secção no MESMO FORMATO do resumo original:
+
+#### [Título do tema]
+🎯 **Foco Principal:** ...
+🧠 **Conceitos-Chave:** ...
+🧮 **Fórmulas/Metodologias:** (se aplicável)
+🏭 **Aplicação Prática:** ...
+🎓 **Dica do Professor:** ...
+
+REGRAS:
+- Devolve APENAS as novas secções, em Markdown limpo.
+- Sem preâmbulo, sem despedida.
+- Não repitas o que já está no resumo atual.
+- Usa as etiquetas das 5 secções no idioma do system prompt.
+
+MATERIAL ORIGINAL:
+
+{material}
+
+---
+
+RESUMO ATUAL (já cobre outros tópicos):
+
+{summary}
+
+---
+
+TÓPICOS A ADICIONAR:
+
+{gaps}
+"""
+
 
 # =============================================================================
-# 10. PROMPTS — Avaliação
+# 12. PROMPTS — Avaliação (4 agentes, veredict-first)
 # =============================================================================
-EVAL_INITIAL_SYSTEM = """És o **Chefe** — Professor Catedrático de Análise de Custos do ISEL.
-A tua tarefa: criar um Teste de Revisão completo sobre a matéria fornecida.
+EVAL_INITIAL_SYSTEM = """És o **Chefe Redator** — Professor Universitário Sénior. Crias testes de revisão de alta qualidade sobre qualquer disciplina académica.
+
+A tua tarefa: produzir um Teste de Revisão completo sobre a matéria fornecida, cobrindo-a TRANSVERSALMENTE.
 
 ESTRUTURA OBRIGATÓRIA:
 
 ## Parte I — Escolha Múltipla (10 questões)
-Para cada questão:
-- Enunciado claro, sem ambiguidade.
-- 4 opções rotuladas a), b), c), d).
-- Identifica a opção correta com **"Resposta: x)"**.
-- Justificação curta (1–2 frases).
+Cada questão:
+- Enunciado claro, sem ambiguidades.
+- 4 opções: a), b), c), d).
+- Linha **Resposta: x)** após as opções.
+- Justificação curta (1-2 frases).
 
 ## Parte II — Exercícios Práticos (2 exercícios)
-- Enunciado realista (empresa industrial fictícia, dados quantitativos coerentes).
-- 3 a 5 alíneas com complexidade crescente.
+- Enunciado realista, com dados quantitativos coerentes quando aplicável.
+- 3-5 alíneas de complexidade crescente.
 - Resolução passo-a-passo com cálculos visíveis.
-- Resultado final destacado.
+- Resultado final destacado em **negrito**.
 
 REGRAS:
-- Cobre TRANSVERSALMENTE toda a matéria.
-- Valores realistas; cálculos que fechem exatamente.
-- LaTeX `$...$` / `$$...$$` para fórmulas.
-- Markdown limpo, sem preâmbulos.
+- COBERTURA TRANSVERSAL: as 10 perguntas distribuem-se por TÓPICOS DIFERENTES.
+- Valores realistas; cálculos que fechem.
+- LaTeX para fórmulas (`$...$` inline, `$$...$$` display).
+- Sem preâmbulos, sem meta-comentários.
+- CONCISO mas COMPLETO.
 """
 
-EVAL_VALIDATION_SYSTEM = """És **{validator}**, revisor académico rigoroso de Análise de Custos (ISEL).
+# Validators: VEREDICT-FIRST. First line is ALWAYS one of two English markers.
+# This makes parsing trivial and reduces ambiguity in any language.
+EVAL_VALIDATION_SYSTEMS: Dict[str, str] = {
+    "Verificador Técnico": """És o **Verificador Técnico**. Verificas RIGOR técnico-científico.
 
-⚠️ REGRA DE OURO: avalias o teste produzido por **{author}**. NUNCA avalies a tua própria autoria.
+⚠️ REGRA DE OURO: avalias o teste produzido por **{author}**. NUNCA reescreves a tua própria autoria.
 
-Verifica rapidamente:
-1. Cálculos certos.
-2. Cada escolha múltipla tem UMA resposta única e correta.
-3. Sem ambiguidades.
-4. Cobertura razoável, sem invenções.
+VERIFICA:
+1. Cálculos exatos (refaz mentalmente).
+2. Fórmulas corretas, com unidades consistentes.
+3. Cada questão de escolha múltipla com UMA E SÓ UMA resposta correta.
+4. Factos verdadeiros.
 
-DECISÃO BINÁRIA — sê EXTREMAMENTE conciso:
+⚠️ FORMATO DE RESPOSTA — MARCADORES UNIVERSAIS (em INGLÊS, INVARIÁVEIS):
 
-▶ APROVAR (sem alterações):
-   Responde EXATAMENTE com a linha: {token}
-   Seguido de NO MÁXIMO 1 frase. NADA MAIS.
+LINHA 1: `{approve_marker}` OU `{rewrite_marker}`
 
-▶ REESCREVER (só se houver falha REAL):
-   - NÃO uses {token}.
-   - Devolve o teste COMPLETO reescrito em Markdown (Parte I + Parte II + soluções).
-   - Apenas o teste, sem comentários.
+→ Se aprovas:
+   Linha 2 (opcional): 1 frase com o que ficou bem.
+   PARA. NADA MAIS.
 
-Sê implacável só com erros que importam — preferências estilísticas NÃO justificam reescrita.
-"""
+→ Se reescreves:
+   Linhas seguintes: 1 bullet curto por cada ERRO TÉCNICO encontrado.
+   Depois: linha `{block_marker}`
+   Em seguida: teste COMPLETO corrigido (Parte I + Parte II + soluções).
+
+⚠️ POLÍTICA DE TOLERÂNCIA: aprova se não há erros técnicos REAIS. Preferências estilísticas, frases que poderiam ser mais elegantes, ou variantes de notação NÃO justificam reescrita. Reescreve apenas se há um erro que estraga o teste.
+
+O conteúdo (razão, teste reescrito) é no idioma indicado no system prompt LANGUAGE OVERRIDE.
+""",
+
+    "Verificador Pedagógico": """És o **Verificador Pedagógico**. Verificas CLAREZA e DIDÁCTICA.
+
+⚠️ REGRA DE OURO: avalias o teste produzido por **{author}**. NUNCA reescreves a tua própria autoria.
+
+VERIFICA:
+1. Enunciados claros e SEM ambiguidades.
+2. Estrutura pedagógica sólida (do simples ao complexo).
+3. Cobertura transversal da matéria.
+4. Markdown limpo, sem ruído visual.
+
+⚠️ FORMATO DE RESPOSTA — MARCADORES UNIVERSAIS (em INGLÊS, INVARIÁVEIS):
+
+LINHA 1: `{approve_marker}` OU `{rewrite_marker}`
+
+→ Se aprovas:
+   Linha 2 (opcional): 1 frase.
+   PARA.
+
+→ Se reescreves:
+   Bullets curtos com cada problema PEDAGÓGICO real.
+   Depois: linha `{block_marker}`
+   Teste COMPLETO corrigido.
+
+⚠️ POLÍTICA DE TOLERÂNCIA: reescreve só se há ambiguidades reais ou má estrutura. Variações de estilo NÃO justificam.
+
+O conteúdo é no idioma do LANGUAGE OVERRIDE.
+""",
+
+    "Aluno Crítico": """És o **Aluno Crítico**. Representas o aluno universitário que VAI USAR este teste para estudar.
+
+⚠️ REGRA DE OURO: avalias o teste produzido por **{author}**. NUNCA reescreves a tua própria autoria.
+
+PERGUNTA-TE:
+1. Conseguiria responder com APENAS a matéria fornecida? Há armadilhas injustas?
+2. O nível de dificuldade é adequado a exame universitário (nem trivial, nem impossível)?
+3. Algum exercício está FORA do âmbito do material fornecido?
+4. As perguntas refletem o que tipicamente é avaliado em exame?
+
+⚠️ FORMATO DE RESPOSTA — MARCADORES UNIVERSAIS (em INGLÊS, INVARIÁVEIS):
+
+LINHA 1: `{approve_marker}` OU `{rewrite_marker}`
+
+→ Se aprovas:
+   Linha 2 (opcional): 1 frase do ponto de vista de aluno.
+   PARA.
+
+→ Se reescreves:
+   Bullets curtos com cada problema do ponto de vista de aluno.
+   Depois: linha `{block_marker}`
+   Teste COMPLETO corrigido.
+
+⚠️ POLÍTICA DE TOLERÂNCIA: reescreve só se há perguntas REALMENTE injustas ou fora-de-âmbito. Dificuldade variada é OK.
+
+O conteúdo é no idioma do LANGUAGE OVERRIDE.
+""",
+}
 
 
 # =============================================================================
-# 11. API NVIDIA
+# 13. API NVIDIA — Stream com threading (timer dinâmico)
 # =============================================================================
 def get_nvidia_client(api_key: str) -> OpenAI:
     return OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key)
 
 
-def stream_call_animated(
+def stream_call_threaded(
     client: OpenAI,
     model: str,
     system_prompt: str,
@@ -1124,33 +1376,64 @@ def stream_call_animated(
     lang_code: str = "pt",
 ) -> str:
     """
-    Chama o modelo em streaming e usa LoadingAnimator para mostrar mensagens
-    divertidas + GIFs + contador + streaming text em paralelo.
+    Faz a chamada streaming num worker thread; o main thread faz polling
+    com timeout=0.5s para que o LoadingAnimator avance mesmo enquanto
+    espera pelo primeiro chunk.
     """
-    animator = LoadingAnimator(container, lang_code=lang_code)
+    chunk_queue: Queue = Queue()
+    done_event = threading.Event()
+    error_holder: List[Optional[Exception]] = [None]
+
+    def worker() -> None:
+        try:
+            stream = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_prompt},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            for chunk in stream:
+                try:
+                    delta = chunk.choices[0].delta.content
+                except (IndexError, AttributeError):
+                    delta = None
+                if delta:
+                    chunk_queue.put(delta)
+        except Exception as e:
+            error_holder[0] = e
+        finally:
+            done_event.set()
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+
+    eta = estimate_eta(model, max_tokens)
+    animator = LoadingAnimator(container, lang_code=lang_code, eta_seconds=eta)
     accumulated = ""
+
     try:
-        stream = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
-        )
-        for chunk in stream:
+        while True:
             try:
-                delta = chunk.choices[0].delta.content
-            except (IndexError, AttributeError):
-                delta = None
-            if delta:
+                delta = chunk_queue.get(timeout=0.5)
                 accumulated += delta
                 animator.update(current_text=accumulated)
+            except Empty:
+                animator.update(current_text=accumulated, force=True)  # tick
+                if done_event.is_set() and chunk_queue.empty():
+                    break
         animator.update(current_text=accumulated, force=True)
     finally:
         animator.clear()
+
+    thread.join(timeout=2.0)
+
+    if error_holder[0]:
+        raise error_holder[0]
+
     return accumulated.strip()
 
 
@@ -1161,14 +1444,11 @@ def friendly_api_error(err: Exception) -> str:
         return (
             "❌ **Modelo não encontrado na tua conta NVIDIA.**\n\n"
             "Vai à sidebar → **⚙️ Configurações → 🤖 Modelos** e escolhe outro do "
-            "dropdown. Cuidado: nem todas as contas têm acesso a todos os modelos.\n\n"
+            "dropdown.\n\n"
             f"_Detalhe técnico:_ `{msg[:300]}`"
         )
     if "401" in msg or "unauthorized" in lower:
-        return (
-            "❌ **Chave NVIDIA inválida ou expirada.** Verifica em ⚙️ Configurações.\n\n"
-            f"_Detalhe:_ `{msg[:300]}`"
-        )
+        return f"❌ **Chave NVIDIA inválida ou expirada.** Verifica em ⚙️ Configurações.\n\n_Detalhe:_ `{msg[:300]}`"
     if "429" in msg or "rate" in lower:
         return f"⏱️ **Limite de pedidos atingido.** Aguarda e tenta de novo.\n\n_Detalhe:_ `{msg[:300]}`"
     if "context" in lower or "length" in lower:
@@ -1185,55 +1465,146 @@ def get_summary_model() -> str:
 
 
 # =============================================================================
-# 12. GERAÇÃO DE RESUMOS (auto + manual)
+# 14. PARSING DOS VEREDITOS
 # =============================================================================
-def summarize_pdf(client, pdf_name: str, pdf_text: str, status_container, lang_code: str) -> str:
+def is_approval(response: str) -> bool:
+    """First-line veredict check + backward-compat fallback."""
+    if not response:
+        return False
+    first_line = response.strip().split("\n", 1)[0].strip().upper()
+    if first_line.startswith(APPROVAL_MARKER.upper()):
+        return True
+    if first_line.startswith(REWRITE_MARKER.upper()):
+        return False
+    # Legacy fallback
+    return LEGACY_APPROVAL_TOKEN.upper() in response.strip()[:300].upper()
+
+
+def extract_rewrite(response: str) -> str:
+    """Extract the rewritten test after the universal block marker."""
+    if REWRITE_BLOCK_MARKER in response:
+        return response.split(REWRITE_BLOCK_MARKER, 1)[1].strip()
+    # Try a few variants (LLMs sometimes translate)
+    for variant in ["--- TESTE REESCRITO ---", "--- TEST REWRITTEN ---", "--- NEW TEST ---"]:
+        if variant in response:
+            return response.split(variant, 1)[1].strip()
+    # No marker: assume everything after the first line is the rewrite
+    return response.strip().split("\n", 1)[-1].strip() if "\n" in response else response.strip()
+
+
+# =============================================================================
+# 15. RESUMO ROBUSTO (com cobertura)
+# =============================================================================
+def _build_summary_system(lang_code: str, extra: str = "") -> str:
+    base = "You are a Senior University Professor producing rigorous academic summaries for university students preparing exams. The material can be from any discipline."
+    parts = [base, language_instruction(lang_code), section_labels_block(lang_code)]
+    if extra:
+        parts.append(extra)
+    return "\n\n".join(parts)
+
+
+def summarize_pdf_robust(
+    client: OpenAI,
+    pdf_name: str,
+    pdf_text: str,
+    status_container,
+    lang_code: str,
+    do_coverage_check: bool = True,
+) -> str:
+    """
+    Gera resumo:
+      • PDF pequeno (1 chunk): 1 chamada LLM
+      • PDF grande (N chunks): N chamadas LLM (resume cada bloco)
+      • Coverage check opcional (multi-chunk apenas):
+          verifica se há lacunas e expande o resumo com tópicos em falta
+    """
     chunks = chunk_text(pdf_text, max_chars=MAX_CHARS_PER_SUMMARY_CHUNK)
     summary_model = get_summary_model()
+    full_system = _build_summary_system(lang_code)
 
-    # System prompt = role + language override + section labels translation
-    base_system = "You are a Professor Catedrático producing rigorous academic summaries."
-    full_system = (
-        base_system + "\n\n"
-        + language_instruction(lang_code) + "\n"
-        + section_labels_block(lang_code)
-    )
-
+    # SINGLE CHUNK ----------------------------------------------------------
     if len(chunks) == 1:
         status_container.write(t("summarizing", name=pdf_name, chars=len(chunks[0])))
         user_prompt = PROMPT_RESUMO_TEMPLATE.format(material=chunks[0])
-        return stream_call_animated(
+        return stream_call_threaded(
             client, model=summary_model,
             system_prompt=full_system, user_prompt=user_prompt,
             container=status_container, temperature=0.4, max_tokens=6000,
             lang_code=lang_code,
         )
 
+    # MULTI CHUNK -----------------------------------------------------------
     status_container.write(t("big_pdf_split", name=pdf_name, n=len(chunks)))
     parts: List[str] = []
     for i, ck in enumerate(chunks, start=1):
-        status_container.write(t("chunk_progress", i=i, n=len(chunks), chars=len(ck))
-                               + " — " + random_fun_message(lang_code))
-        chunk_system = (
-            base_system + " "
-            f"This text is part of a larger document — summarise ONLY this block ({i}/{len(chunks)})."
-            "\n\n" + language_instruction(lang_code) + "\n" + section_labels_block(lang_code)
+        status_container.write(
+            t("chunk_progress", i=i, n=len(chunks), chars=len(ck))
+            + " — " + random_fun_message(lang_code)
+        )
+        chunk_system = _build_summary_system(
+            lang_code,
+            extra=f"This text is part {i}/{len(chunks)} of a larger document. "
+                  f"Summarise ONLY this block, exhaustively (do not omit anything from this block).",
         )
         user_prompt = PROMPT_RESUMO_TEMPLATE.format(material=ck)
-        partial = stream_call_animated(
+        partial = stream_call_threaded(
             client, model=summary_model,
             system_prompt=chunk_system, user_prompt=user_prompt,
-            container=status_container, temperature=0.4, max_tokens=6000,
+            container=status_container, temperature=0.4, max_tokens=5500,
             lang_code=lang_code,
         )
         parts.append(f"<!-- Block {i}/{len(chunks)} -->\n\n{partial}")
 
-    return "\n\n---\n\n".join(parts)
+    combined = "\n\n---\n\n".join(parts)
+
+    # COVERAGE CHECK (opcional) --------------------------------------------
+    if not do_coverage_check:
+        return combined
+
+    status_container.write(t("checking_coverage") + " — " + random_fun_message(lang_code))
+    coverage_prompt = PROMPT_COVERAGE_CHECK.format(
+        ok_marker=COVERAGE_OK_MARKER,
+        material=safe_truncate(pdf_text, MAX_CHARS_FOR_COVERAGE),
+        summary=combined,
+    )
+    coverage_resp = stream_call_threaded(
+        client, model=summary_model,
+        system_prompt=full_system, user_prompt=coverage_prompt,
+        container=status_container, temperature=0.15, max_tokens=2000,
+        lang_code=lang_code,
+    )
+
+    first_line = coverage_resp.strip().split("\n", 1)[0].strip().upper()
+    if first_line.startswith(COVERAGE_OK_MARKER):
+        status_container.write(t("coverage_ok"))
+        return combined
+
+    # GAPS FOUND — expand ---------------------------------------------------
+    status_container.write(t("coverage_gaps"))
+    gaps = coverage_resp.strip().split("\n", 1)[-1].strip() if "\n" in coverage_resp else coverage_resp
+    extension_prompt = PROMPT_GAP_FILLING.format(
+        material=safe_truncate(pdf_text, MAX_CHARS_FOR_COVERAGE),
+        summary=combined,
+        gaps=gaps,
+    )
+    extension = stream_call_threaded(
+        client, model=summary_model,
+        system_prompt=full_system, user_prompt=extension_prompt,
+        container=status_container, temperature=0.35, max_tokens=4000,
+        lang_code=lang_code,
+    )
+    status_container.write(t("coverage_expanded"))
+    sl = SECTION_LABELS_BY_LANG.get(lang_code, SECTION_LABELS_BY_LANG["pt"])
+    return combined + f"\n\n---\n\n## ✨ {sl['cobertura']} (extended)\n\n" + extension
 
 
+# =============================================================================
+# 16. AUTO-PROCESSAMENTO DE UPLOADS
+# =============================================================================
 def auto_process_uploaded_pdfs(uploaded_files) -> None:
     api_key = st.session_state.nvidia_api_key
     lang_code = st.session_state.get("ui_language", "pt")
+    do_cov = bool(st.session_state.get("coverage_check", True))
     if not api_key:
         st.warning(t("warn_set_key"), icon="⚠️")
     client = get_nvidia_client(api_key) if api_key else None
@@ -1270,7 +1641,7 @@ def auto_process_uploaded_pdfs(uploaded_files) -> None:
                              state="complete", expanded=False)
                     continue
 
-                summary_md = summarize_pdf(client, f.name, raw_text, s, lang_code)
+                summary_md = summarize_pdf_robust(client, f.name, raw_text, s, lang_code, do_coverage_check=do_cov)
                 st.session_state.pdf_database[f.name] = {
                     "raw_text": raw_text, "summary": summary_md,
                     "pages": n_pages, "chars": n_chars,
@@ -1288,6 +1659,7 @@ def auto_process_uploaded_pdfs(uploaded_files) -> None:
 def regenerate_summary(pdf_name: str) -> None:
     api_key = st.session_state.nvidia_api_key
     lang_code = st.session_state.get("ui_language", "pt")
+    do_cov = bool(st.session_state.get("coverage_check", True))
     if not api_key:
         st.warning(t("warn_set_key"))
         return
@@ -1301,7 +1673,7 @@ def regenerate_summary(pdf_name: str) -> None:
     client = get_nvidia_client(api_key)
     with st.status(t("regen_progress", name=pdf_name), expanded=True) as s:
         try:
-            new_summary = summarize_pdf(client, pdf_name, raw_text, s, lang_code)
+            new_summary = summarize_pdf_robust(client, pdf_name, raw_text, s, lang_code, do_coverage_check=do_cov)
             entry["summary"] = new_summary
             entry["auto_generated"] = True
             entry["language"] = lang_code
@@ -1313,7 +1685,7 @@ def regenerate_summary(pdf_name: str) -> None:
 
 
 # =============================================================================
-# 13. LOOP DE CONSENSO CIRCULAR — AVALIAÇÃO
+# 17. CONSENSUS LOOP — 4 AGENTES, VEREDICT-FIRST
 # =============================================================================
 @dataclass
 class DebateEntry:
@@ -1333,28 +1705,29 @@ class DebateResult:
     iterations_used: int = 0
 
 
-def is_approval(response: str) -> bool:
-    return UNANIMITY_TOKEN.upper() in response.strip()[:300].upper()
-
-
-def run_eval_consensus(client, full_material: str, *, max_iterations: int, ui_container, lang_code: str) -> DebateResult:
+def run_eval_consensus(
+    client: OpenAI,
+    full_material: str,
+    *,
+    max_iterations: int,
+    ui_container,
+    lang_code: str,
+) -> DebateResult:
     history: List[DebateEntry] = []
-
-    # Language override aplicado a TODAS as chamadas do debate
     lang_block = language_instruction(lang_code)
 
-    # FASE 0 — Chefe V1
+    # FASE 0 — Chefe V1 ----------------------------------------------------
     with ui_container.status(
-        t("chefe_drafting") + f" — {random_fun_message(lang_code)}", expanded=True,
+        t("chefe_drafting") + " — " + random_fun_message(lang_code), expanded=True,
     ) as s:
         chefe_model = get_model("Chefe")
-        s.write(f"Modelo: `{chefe_model}`")
+        s.write(f"`{chefe_model}`")
         system_prompt = EVAL_INITIAL_SYSTEM + "\n\n" + lang_block
         user_prompt = (
-            "MATÉRIA DE ESTUDO COMPLETA:\n\n"
-            f"{full_material}\n\n---\n\nProduz agora o Teste de Revisão."
+            "MATERIAL DE ESTUDO COMPLETO:\n\n"
+            f"{full_material}\n\n---\n\nProduz agora o Teste de Revisão completo."
         )
-        initial_draft = stream_call_animated(
+        initial_draft = stream_call_threaded(
             client, model=chefe_model,
             system_prompt=system_prompt, user_prompt=user_prompt,
             container=s, temperature=0.35, max_tokens=5500, lang_code=lang_code,
@@ -1365,9 +1738,10 @@ def run_eval_consensus(client, full_material: str, *, max_iterations: int, ui_co
 
     current_author, current_content, version_number = "Chefe", initial_draft, 1
 
+    # LOOP DE CONSENSO -----------------------------------------------------
     for iteration in range(1, max_iterations + 1):
         ui_container.markdown(
-            f"<div class='round-tag'>{t('round_of', i=iteration, n=max_iterations, v=version_number, a=current_author)}</div>",
+            f"<div class='round-tag'>{t('round_of', i=iteration, n=max_iterations, v=version_number, a=agent_display(current_author))}</div>",
             unsafe_allow_html=True,
         )
         validators_this_round = [a for a in AGENTS_ORDER if a != current_author]
@@ -1376,48 +1750,52 @@ def run_eval_consensus(client, full_material: str, *, max_iterations: int, ui_co
 
         for validator_name in validators_this_round:
             label = (t("validator_evaluating",
-                       icon=AGENT_ICONS[validator_name], v=validator_name,
-                       n=version_number, a=current_author)
-                     + f" — {random_fun_message(lang_code)}")
+                       icon=AGENT_ICONS[validator_name], v=agent_display(validator_name),
+                       n=version_number, a=agent_display(current_author))
+                     + " — " + random_fun_message(lang_code))
             with ui_container.status(label, expanded=True) as s:
                 v_model = get_model(validator_name)
-                s.write(f"Modelo: `{v_model}`")
+                s.write(f"`{v_model}`")
                 system_prompt = (
-                    EVAL_VALIDATION_SYSTEM.format(
-                        validator=validator_name, author=current_author, token=UNANIMITY_TOKEN
+                    EVAL_VALIDATION_SYSTEMS[validator_name].format(
+                        author=agent_display(current_author),
+                        approve_marker=APPROVAL_MARKER,
+                        rewrite_marker=REWRITE_MARKER,
+                        block_marker=REWRITE_BLOCK_MARKER,
                     ) + "\n\n" + lang_block
                 )
                 user_prompt = (
-                    "MATÉRIA ORIGINAL:\n\n"
+                    "MATERIAL ORIGINAL:\n\n"
                     f"{full_material}\n\n---\n\n"
-                    f"TESTE A AVALIAR (autoria: {current_author}, V{version_number}):\n\n"
+                    f"TESTE A AVALIAR (autoria: {agent_display(current_author)}, V{version_number}):\n\n"
                     f"{current_content}\n\n---\n\n"
-                    f"DECIDE: aprovar com `{UNANIMITY_TOKEN}` ou reescrever o teste completo."
+                    f"DECIDE: começa por `{APPROVAL_MARKER}` ou `{REWRITE_MARKER}`."
                 )
-                response = stream_call_animated(
+                response = stream_call_threaded(
                     client, model=v_model,
                     system_prompt=system_prompt, user_prompt=user_prompt,
-                    container=s, temperature=0.2, max_tokens=3000, lang_code=lang_code,
+                    container=s, temperature=0.1, max_tokens=5500, lang_code=lang_code,
                 )
 
                 if is_approval(response):
                     approvals_this_round.append(validator_name)
                     history.append(DebateEntry(iteration, validator_name, current_author, response, "approval"))
-                    s.update(label=t("approved", v=validator_name, tok=UNANIMITY_TOKEN),
+                    s.update(label=t("approved", v=agent_display(validator_name)),
                              state="complete", expanded=False)
                 else:
+                    rewritten = extract_rewrite(response)
                     history.append(DebateEntry(iteration, validator_name, current_author, response, "rewrite"))
                     version_number += 1
-                    s.update(label=t("rewrote", v=validator_name, n=version_number),
+                    s.update(label=t("rewrote", v=agent_display(validator_name), n=version_number),
                              state="complete", expanded=False)
-                    current_author, current_content = validator_name, response
+                    current_author, current_content = validator_name, rewritten
                     rewrite_happened = True
-                    break
+                    break  # próxima ronda começa com o novo autor
 
         if not rewrite_happened and len(approvals_this_round) == len(validators_this_round):
-            others = ", ".join(validators_this_round)
+            others = ", ".join(agent_display(v) for v in validators_this_round)
             ui_container.markdown(
-                f"<div class='consensus-banner'>{t('consensus_msg', i=iteration, v=version_number, a=current_author, others=others)}</div>",
+                f"<div class='consensus-banner'>{t('consensus_msg', i=iteration, v=version_number, a=agent_display(current_author), others=others)}</div>",
                 unsafe_allow_html=True,
             )
             return DebateResult(
@@ -1426,7 +1804,7 @@ def run_eval_consensus(client, full_material: str, *, max_iterations: int, ui_co
             )
 
     ui_container.markdown(
-        f"<div class='no-consensus-banner'>{t('no_consensus_msg', n=max_iterations, v=version_number, a=current_author)}</div>",
+        f"<div class='no-consensus-banner'>{t('no_consensus_msg', n=max_iterations, v=version_number, a=agent_display(current_author))}</div>",
         unsafe_allow_html=True,
     )
     return DebateResult(
@@ -1436,7 +1814,7 @@ def run_eval_consensus(client, full_material: str, *, max_iterations: int, ui_co
 
 
 # =============================================================================
-# 14. SESSION STATE
+# 18. SESSION STATE
 # =============================================================================
 DEFAULT_MAX_ITER = 4
 
@@ -1445,10 +1823,16 @@ st.session_state.setdefault("nvidia_api_key", "")
 st.session_state.setdefault("max_iterations", DEFAULT_MAX_ITER)
 st.session_state.setdefault("agent_models", DEFAULT_MODELS.copy())
 st.session_state.setdefault("summary_model", DEFAULT_SUMMARY_MODEL)
+st.session_state.setdefault("coverage_check", True)
 st.session_state.setdefault("pdf_database", {})
 st.session_state.setdefault("eval_selected_pdfs", [])
 st.session_state.setdefault("eval_result", None)
 st.session_state.setdefault("_processed_signatures", set())
+
+# Migrate state from v3.0 (3 agents → 4 agents)
+_old_models = st.session_state.agent_models
+if "Validador A" in _old_models or "Validador B" in _old_models or set(_old_models.keys()) != set(AGENTS_ORDER):
+    st.session_state.agent_models = DEFAULT_MODELS.copy()
 
 if not st.session_state.nvidia_api_key:
     try:
@@ -1460,26 +1844,20 @@ if not st.session_state.nvidia_api_key:
 
 
 # =============================================================================
-# 15. SIDEBAR
+# 19. SIDEBAR
 # =============================================================================
 def model_selectbox(label: str, current_value: str, key: str) -> str:
-    """
-    Renderiza um selectbox de modelos baseado no MODEL_REGISTRY, com
-    fallback "✏️ Personalizado…" que abre um text_input.
-    """
     registry_keys = list(MODEL_REGISTRY.keys())
     options = registry_keys + [CUSTOM_MODEL_SENTINEL]
-
-    # Determina índice atual
     if current_value in MODEL_REGISTRY:
         idx = registry_keys.index(current_value)
     else:
-        idx = len(registry_keys)  # = custom
+        idx = len(registry_keys)
 
     def _fmt(k: str) -> str:
         if k == CUSTOM_MODEL_SENTINEL:
             return CUSTOM_MODEL_SENTINEL
-        return MODEL_REGISTRY[k]["label"]
+        return str(MODEL_REGISTRY[k]["label"])
 
     chosen = st.selectbox(label, options=options, index=idx, format_func=_fmt, key=key + "_sel")
 
@@ -1494,11 +1872,13 @@ def model_selectbox(label: str, current_value: str, key: str) -> str:
     else:
         meta = MODEL_REGISTRY[chosen]
         css_class = "model-warn" if meta.get("warn") else "model-help"
+        speed_4k = meta.get("est_seconds_4k", DEFAULT_SPEED_ESTIMATE_4K)
+        speed_txt = f"<br>⏱ ~{speed_4k}s {t('model_speed')}/4k tok" if speed_4k else ""
         st.markdown(
-            f"<div class='{css_class}'>{meta['best_for']}</div>",
+            f"<div class='{css_class}'>{meta['best_for']}{speed_txt}</div>",
             unsafe_allow_html=True,
         )
-        return chosen
+        return str(chosen)
 
 
 with st.sidebar:
@@ -1512,18 +1892,15 @@ with st.sidebar:
         """,
         unsafe_allow_html=True,
     )
-    st.caption("Análise de Custos · Multi-Agent AI")
+    st.caption("Plataforma Universitária · Multi-Agent AI")
 
-    # --- 🌐 Idioma -----------------------------------------------------------
+    # --- Idioma -------------------------------------------------------------
     lang_options = list(LANGUAGES.keys())
     current_lang_idx = lang_options.index(st.session_state.ui_language) if st.session_state.ui_language in lang_options else 0
     new_lang = st.selectbox(
-        t("language"),
-        options=lang_options,
-        index=current_lang_idx,
+        t("language"), options=lang_options, index=current_lang_idx,
         format_func=lambda c: LANGUAGES[c]["label"],
-        help=t("language_help"),
-        key="lang_select",
+        help=t("language_help"), key="lang_select",
     )
     if new_lang != st.session_state.ui_language:
         st.session_state.ui_language = new_lang
@@ -1531,11 +1908,10 @@ with st.sidebar:
 
     st.divider()
 
-    # --- ⚙️ Configurações ---------------------------------------------------
+    # --- ⚙️ Configurações --------------------------------------------------
     with st.expander(t("config"), expanded=not st.session_state.nvidia_api_key):
         api_key_input = st.text_input(
-            t("api_key"),
-            value=st.session_state.nvidia_api_key, type="password",
+            t("api_key"), value=st.session_state.nvidia_api_key, type="password",
             placeholder="nvapi-…", help=t("api_key_help"),
         )
         if api_key_input != st.session_state.nvidia_api_key:
@@ -1548,6 +1924,14 @@ with st.sidebar:
         if max_iter_input != st.session_state.max_iterations:
             st.session_state.max_iterations = max_iter_input
 
+        coverage_input = st.checkbox(
+            t("coverage_check_label"),
+            value=st.session_state.coverage_check,
+            help=t("coverage_check_help"),
+        )
+        if coverage_input != st.session_state.coverage_check:
+            st.session_state.coverage_check = coverage_input
+
         st.markdown(f"**{t('summary_model_label')}**")
         new_sm = model_selectbox("", st.session_state.summary_model, "summary_model")
         if new_sm and new_sm != st.session_state.summary_model:
@@ -1556,7 +1940,11 @@ with st.sidebar:
         st.markdown(f"**{t('debate_models_label')}**")
         st.caption(t("model_404_hint"))
         for agent_name in AGENTS_ORDER:
-            st.markdown(f"**{AGENT_ICONS[agent_name]} {agent_name}**")
+            st.markdown(
+                f"**{AGENT_ICONS[agent_name]} {agent_display(agent_name)}** "
+                f"<span style='color:{ISEL_GRAY_11}; font-size:0.8rem'>· _{agent_role_description(agent_name)}_</span>",
+                unsafe_allow_html=True,
+            )
             new_val = model_selectbox(
                 "",
                 st.session_state.agent_models.get(agent_name, DEFAULT_MODELS[agent_name]),
@@ -1628,18 +2016,18 @@ with st.sidebar:
 
 
 # =============================================================================
-# 16. CABEÇALHO PRINCIPAL
+# 20. CABEÇALHO PRINCIPAL
 # =============================================================================
 st.markdown(
     f"""
     <div class="isel-banner">
-        <h1>📊 {t('app_title')}</h1>
+        <h1>🎓 {t('app_title')}</h1>
         <p class="subtitle">{t('subtitle')}</p>
         <div>
-            <span class="badge">🧠 Auto-summaries</span>
-            <span class="badge">🎓 Multi-agent eval</span>
-            <span class="badge">📄 Native PDF</span>
-            <span class="badge">🌐 5 languages</span>
+            <span class="badge">{t('badge_universal')}</span>
+            <span class="badge">{t('badge_multilang')}</span>
+            <span class="badge">{t('badge_coverage')}</span>
+            <span class="badge">{t('badge_4agents')}</span>
         </div>
     </div>
     """,
@@ -1648,15 +2036,18 @@ st.markdown(
 
 
 # =============================================================================
-# 17. RENDERIZADORES
+# 21. RENDERIZADORES
 # =============================================================================
 def render_agent_panel() -> None:
-    c1, c2, c3 = st.columns(3)
-    for col, name in zip([c1, c2, c3], AGENTS_ORDER):
+    cols = st.columns(4)
+    for col, name in zip(cols, AGENTS_ORDER):
         with col:
             st.markdown(
-                f"<div class='agent-card'><div class='role'>{AGENT_ICONS[name]} {name}</div>"
-                f"<div class='model'>{get_model(name)}</div></div>",
+                f"<div class='agent-card'>"
+                f"<div class='role'>{AGENT_ICONS[name]} {agent_display(name)}</div>"
+                f"<div class='role-desc'>{agent_role_description(name)}</div>"
+                f"<div class='model'>{get_model(name)}</div>"
+                f"</div>",
                 unsafe_allow_html=True,
             )
 
@@ -1709,10 +2100,10 @@ def render_debate_history(result: DebateResult) -> None:
             if entry.kind == "draft":
                 tag = "📝 V1"
             elif entry.kind == "approval":
-                tag = f"✅ → {entry.target_author}"
+                tag = f"✅ → {agent_display(entry.target_author)}" if entry.target_author else "✅"
             else:
-                tag = f"✏️ → {entry.target_author}"
-            st.markdown(f"**R{entry.iteration} · {icon} {entry.author}** — {tag}")
+                tag = f"✏️ → {agent_display(entry.target_author)}" if entry.target_author else "✏️"
+            st.markdown(f"**R{entry.iteration} · {icon} {agent_display(entry.author)}** — {tag}")
             with st.container(border=True):
                 if entry.kind == "approval":
                     st.code(entry.content[:1500], language="markdown")
@@ -1813,7 +2204,7 @@ def render_evaluation_tab() -> None:
         status_text = (t("consensus_in", n=result.iterations_used) if result.consensus_reached
                        else t("limit_reached", n=result.iterations_used))
         st.markdown(f"## {status_emoji} {t('final_version')} · {status_text}")
-        st.caption(f"{t('final_authorship')}: **{AGENT_ICONS[result.final_author]} {result.final_author}**")
+        st.caption(f"{t('final_authorship')}: **{AGENT_ICONS[result.final_author]} {agent_display(result.final_author)}**")
         with st.container(border=True):
             st.markdown(result.final_content)
         st.download_button(t("download_test"), data=result.final_content,
@@ -1822,7 +2213,7 @@ def render_evaluation_tab() -> None:
 
 
 # =============================================================================
-# 18. TABS PRINCIPAIS
+# 22. TABS PRINCIPAIS
 # =============================================================================
 db = st.session_state.pdf_database
 
