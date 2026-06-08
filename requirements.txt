@@ -1,3 +1,26 @@
-streamlit>=1.38.0
-pymupdf>=1.24.0
-openai>=1.30.0
+# Universal ScholarGPT v5.2 — Dependencies
+
+# ═══════════════════════════════════════════════════════════════════
+# NÚCLEO — obrigatório
+# ═══════════════════════════════════════════════════════════════════
+streamlit>=1.30
+openai>=1.0           # cliente NVIDIA NIM (compatível OpenAI API)
+PyMuPDF>=1.23         # extracção PDF (módulo: fitz)
+
+# ═══════════════════════════════════════════════════════════════════
+# MULTI-FORMATO v5.2 — recomendado
+# ═══════════════════════════════════════════════════════════════════
+python-docx>=1.0      # .docx
+python-pptx>=0.6.21   # .pptx
+openpyxl>=3.1         # .xlsx (engine)
+pandas>=2.0           # .xlsx (parser de alto nível, preferido)
+beautifulsoup4>=4.12  # .html (qualidade superior ao regex fallback)
+
+# ═══════════════════════════════════════════════════════════════════
+# OCR LOCAL v5.2 — OPCIONAL (graceful skip se ausente)
+# Se não instalares estes 3, o sistema usa Vision LLM via NVIDIA NIM
+# como alternativa (recomendado para qualidade superior).
+# ═══════════════════════════════════════════════════════════════════
+pdf2image>=1.16       # PDF → imagens (precisa de `poppler` instalado no SO)
+pytesseract>=0.3.10   # OCR Python wrapper (precisa de `tesseract` no SO)
+Pillow>=10.0          # processamento de imagens
